@@ -118,18 +118,39 @@ model InventoryItem {
   updatedAt   DateTime @updatedAt
 }
 
+model CostCenter {
+  id           String                 @id @default(cuid())
+  name         String                 @unique // e.g., "Operacional", "Marketing", "RH", "Infraestrutura"
+  description  String?
+  transactions FinancialTransaction[]
+  createdAt    DateTime               @default(now())
+}
+
 enum TransactionType {
   INCOME
   EXPENSE
 }
 
+enum TransactionStatus {
+  PENDING
+  PAID
+  CANCELLED
+}
+
 model FinancialTransaction {
-  id             String          @id @default(cuid())
+  id             String            @id @default(cuid())
   type           TransactionType
   amount         Decimal
   description    String
-  date           DateTime        @default(now())
+  category       String?           // e.g., "Mão de Obra", "Peças", "Aluguel", "Energia"
+  status         TransactionStatus @default(PAID)
+  date           DateTime          @default(now())
+  
+  costCenterId   String?
+  costCenter     CostCenter?       @relation(fields: [costCenterId], references: [id])
+  
   serviceOrderId String?
-  serviceOrder   ServiceOrder?   @relation(fields: [serviceOrderId], references: [id])
-  createdAt      DateTime        @default(now())
+  serviceOrder   ServiceOrder?     @relation(fields: [serviceOrderId], references: [id])
+  
+  createdAt      DateTime          @default(now())
 }
