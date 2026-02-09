@@ -29,7 +29,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const pathname = usePathname();
 
     const menuItems = [
-        { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
+        { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
         { icon: ClipboardList, label: 'Ordens de Serviço', href: '/ordens' },
         { icon: Car, label: 'Veículos', href: '/veiculos' },
         { icon: Users, label: 'Clientes', href: '/clientes' },
@@ -95,7 +95,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                 <Button
                                     variant="ghost"
                                     className="w-full text-xs h-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 justify-start px-2"
-                                    onClick={() => signOut({ callbackUrl: '/login' })}
+                                    onClick={() => signOut({ callbackUrl: '/' })}
                                 >
                                     <LogOut className="w-3.5 h-3.5 mr-2" /> Encerrar Sessão
                                 </Button>
