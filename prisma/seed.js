@@ -1,11 +1,25 @@
 const { PrismaClient } = require('@prisma/client');
+const { PrismaPg } = require('@prisma/adapter-pg');
+const { Pool } = require('pg');
 const { hash } = require('bcrypt-ts');
 require('dotenv').config();
 
-const prisma = new PrismaClient();
+const databaseUrl = process.env.DATABASE_URL || "";
+
+function createPrismaClient() {
+    if (!databaseUrl) {
+        throw new Error("DATABASE_URL não configurada no .env");
+    }
+
+    const pool = new Pool({ connectionString: databaseUrl });
+    const adapter = new PrismaPg(pool);
+    return new PrismaClient({ adapter });
+}
+
+const prisma = createPrismaClient();
 
 async function main() {
-    console.log('Iniciando seed...');
+    console.log('Iniciando seed no Supabase...');
     const adminPassword = await hash('admin123', 10);
     const employeePassword = await hash('user123', 10);
 
