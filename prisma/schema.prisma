@@ -1,0 +1,135 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Client {
+  id        String    @id @default(cuid())
+  name      String
+  email     String?
+  phone     String
+  document  String?   @unique
+  vehicles  Vehicle[]
+  orders    ServiceOrder[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Vehicle {
+  id        String    @id @default(cuid())
+  plate     String    @unique
+  vin       String?   @unique
+  model     String
+  brand     String
+  year      Int?
+  clientId  String
+  client    Client    @relation(fields: [clientId], references: [id])
+  orders    ServiceOrder[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+enum OrderStatus {
+  OPEN
+  QUOTATION
+  APPROVED
+  IN_PROGRESS
+  WAITING_PARTS
+  FINISHED
+  CANCELLED
+}
+
+model ServiceOrder {
+  id              String         @id @default(cuid())
+  number          Int            @unique @default(autoincrement())
+  status          OrderStatus    @default(OPEN)
+  entryDate       DateTime       @default(now())
+  exitDate        DateTime?
+  km              Int
+  fuelLevel       Int?           // Percentage
+  mechanic        String?
+  observations    String?
+  clientReport    String?        // Recorded by Voice-to-Text
+  clientId        String
+  client          Client         @relation(fields: [clientId], references: [id])
+  vehicleId       String
+  vehicle         Vehicle        @relation(fields: [vehicleId], references: [id])
+  checklistItems  ChecklistItem[]
+  damagePoints    DamagePoint[]
+  services        ServiceItem[]
+  parts           PartItem[]
+  financials      FinancialTransaction[]
+  signatureUrl    String?        // URL to digital signature image
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+}
+
+model ChecklistItem {
+  id             String       @id @default(cuid())
+  name           String
+  section        String       // "Visual", "Mechanical", "Fluids", etc.
+  status         String       // "OK", "ATTENTION", "REPLACE", "YES", "NO"
+  observation    String?
+  photoUrl       String?
+  serviceOrderId String
+  serviceOrder   ServiceOrder @relation(fields: [serviceOrderId], references: [id])
+}
+
+model DamagePoint {
+  id             String       @id @default(cuid())
+  x              Float
+  y              Float
+  description    String?
+  serviceOrderId String
+  serviceOrder   ServiceOrder @relation(fields: [serviceOrderId], references: [id])
+}
+
+model ServiceItem {
+  id             String       @id @default(cuid())
+  description    String
+  price          Decimal
+  quantity       Decimal      @default(1)
+  serviceOrderId String
+  serviceOrder   ServiceOrder @relation(fields: [serviceOrderId], references: [id])
+}
+
+model PartItem {
+  id             String       @id @default(cuid())
+  name           String
+  sku            String?
+  price          Decimal
+  quantity       Decimal
+  serviceOrderId String
+  serviceOrder   ServiceOrder @relation(fields: [serviceOrderId], references: [id])
+}
+
+model InventoryItem {
+  id          String   @id @default(cuid())
+  name        String
+  sku         String   @unique
+  quantity    Decimal
+  minQuantity Decimal
+  unitPrice   Decimal
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+model FinancialTransaction {
+  id             String          @id @default(cuid())
+  type           TransactionType
+  amount         Decimal
+  description    String
+  date           DateTime        @default(now())
+  serviceOrderId String?
+  serviceOrder   ServiceOrder?   @relation(fields: [serviceOrderId], references: [id])
+  createdAt      DateTime        @default(now())
+}
