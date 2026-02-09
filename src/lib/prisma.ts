@@ -10,20 +10,19 @@ const globalForPrisma = global as unknown as {
 const databaseUrl = process.env.DATABASE_URL || "";
 
 function createPrismaClient() {
-    // Definimos o log com 'as any' para evitar conflitos de tipo de string no build da Vercel
     const logValue: any = process.env.NODE_ENV === "development"
         ? ["query", "error", "warn"]
         : ["error"];
 
-    // Caso de build sem URL
-    if (!databaseUrl) {
-        return new PrismaClient({ log: logValue });
-    }
+    // No Prisma 7, se usarmos o driver adapter, precisamos fornecer ele sempre no construtor
+    // Mesmo durante o build, senão ele lança erro de validação.
 
-    // Para o Prisma 7, precisamos usar o adaptador para conexões diretas (ex: Supabase)
+    // Se não houver URL (casos de build na Vercel), criamos um pool vazio apenas para passar a validação
+    const connectionString = databaseUrl || "postgresql://postgres:postgres@localhost:5432/postgres";
+
     if (!globalForPrisma.pool) {
         globalForPrisma.pool = new Pool({
-            connectionString: databaseUrl,
+            connectionString,
             max: 10,
             idleTimeoutMillis: 30000,
             connectionTimeoutMillis: 5000,
@@ -31,6 +30,7 @@ function createPrismaClient() {
     }
 
     const adapter = new PrismaPg(globalForPrisma.pool);
+
     return new PrismaClient({
         log: logValue,
         adapter,
