@@ -8,19 +8,32 @@ const globalForPrisma = global as unknown as {
 };
 
 const databaseUrl = process.env.DATABASE_URL || "";
-const isStandardPostgres = databaseUrl.startsWith('postgres://') ||
-    databaseUrl.startsWith('postgresql://') ||
-    databaseUrl.startsWith('prisma+postgres://');
+
+// Só usamos o adaptador se tivermos uma URL válida
+const useAdapter = databaseUrl.startsWith('postgres://') || databaseUrl.startsWith('postgresql://');
 
 function createPrismaClient() {
-    if (isStandardPostgres) {
+    // Caso especial para o deploy da Vercel (evita erro no build)
+    if (!databaseUrl && process.env.NODE_ENV === "production") {
+        return new PrismaClient();
+    }
+
+    if (useAdapter) {
         if (!globalForPrisma.pool) {
-            globalForPrisma.pool = new Pool({ connectionString: databaseUrl });
+            globalForPrisma.pool = new Pool({
+                connectionString: databaseUrl,
+                max: 10,
+                idleTimeoutMillis: 30000,
+                connectionTimeoutMillis: 2000,
+            });
         }
         const adapter = new PrismaPg(globalForPrisma.pool);
         return new PrismaClient({ adapter, log: ['error'] });
     }
-    return new PrismaClient({ log: ['error'] });
+
+    return new PrismaClient({
+        log: ['error'],
+    });
 }
 
 export const prisma = globalForPrisma.prisma || createPrismaClient();

@@ -3,7 +3,7 @@ import { authConfig } from "./auth.config";
 import Credentials from "next-auth/providers/credentials";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import bcrypt from "bcryptjs";
+import { compare } from "bcrypt-ts";
 import { type DefaultSession } from "next-auth";
 
 declare module "next-auth" {
@@ -32,7 +32,7 @@ export const { auth, signIn, signOut, handlers: { GET, POST } } = NextAuth({
                         return null;
                     }
 
-                    const passwordsMatch = await bcrypt.compare(password, user.password);
+                    const passwordsMatch = await compare(password, user.password);
 
                     if (!passwordsMatch) {
                         console.log('Login failed: Password mismatch for', email);
