@@ -10,15 +10,14 @@ const globalForPrisma = global as unknown as {
 const databaseUrl = process.env.DATABASE_URL || "";
 
 function createPrismaClient() {
-    // Configurações base para o Prisma 7
-    const baseOptions = {
-        log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],
-    };
+    // Definimos o log com 'as any' para evitar conflitos de tipo de string no build da Vercel
+    const logValue: any = process.env.NODE_ENV === "development"
+        ? ["query", "error", "warn"]
+        : ["error"];
 
-    // Se estivermos em um ambiente de build ou sem URL, retornamos um cliente mínimo
-    // para evitar erros de inicialização durante o build da Vercel
+    // Caso de build sem URL
     if (!databaseUrl) {
-        return new PrismaClient(baseOptions);
+        return new PrismaClient({ log: logValue });
     }
 
     // Para o Prisma 7, precisamos usar o adaptador para conexões diretas (ex: Supabase)
@@ -33,7 +32,7 @@ function createPrismaClient() {
 
     const adapter = new PrismaPg(globalForPrisma.pool);
     return new PrismaClient({
-        ...baseOptions,
+        log: logValue,
         adapter,
     });
 }
