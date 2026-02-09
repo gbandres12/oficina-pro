@@ -1,19 +1,17 @@
 "use client";
 
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
     ClipboardCheck,
     Car,
     Wrench,
     Droplets,
     Camera,
-    Mic,
     CheckCircle2,
     AlertCircle,
     XCircle,
     Save,
-    ArrowRight,
     ShieldAlert,
     Info
 } from 'lucide-react';
@@ -26,7 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
 
-import InteractiveCarDiagram from './InteractiveCarDiagram';
+import InteractiveCarDiagram, { Point } from './InteractiveCarDiagram';
 import VoiceInput from './VoiceInput';
 import SignaturePad from './SignaturePad';
 
@@ -43,7 +41,7 @@ interface ChecklistItem {
 export default function ChecklistInteligente() {
     const [activeStep, setActiveStep] = useState(0);
     const [customerReport, setCustomerReport] = useState('');
-    const [damagePoints, setDamagePoints] = useState<any[]>([]);
+    const [damagePoints, setDamagePoints] = useState<Point[]>([]);
     const [signature, setSignature] = useState<string | null>(null);
 
     const [items, setItems] = useState<ChecklistItem[]>([
@@ -349,7 +347,7 @@ export default function ChecklistInteligente() {
                 <div className="inline-flex flex-col items-center gap-2 max-w-md">
                     <Badge variant="outline" className="text-[10px] font-medium text-muted-foreground border-dashed">DIRETRIZES ANDRES OFICINA</Badge>
                     <p className="text-sm font-semibold italic text-slate-500 dark:text-slate-400">
-                        "A satisfação do cliente depende de você. Não esqueça que são vidas conduzindo esse veículo."
+                        &quot;A satisfação do cliente depende de você. Não esqueça que são vidas conduzindo esse veículo.&quot;
                     </p>
                 </div>
             </div>

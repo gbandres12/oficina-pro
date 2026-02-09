@@ -9,9 +9,20 @@ interface VoiceInputProps {
     label?: string;
 }
 
+interface SpeechRecognition extends EventTarget {
+    continuous: boolean;
+    interimResults: boolean;
+    lang: string;
+    onresult: (event: any) => void;
+    onerror: (event: any) => void;
+    onend: () => void;
+    start: () => void;
+    stop: () => void;
+}
+
 export default function VoiceInput({ onResult, label }: VoiceInputProps) {
     const [isListening, setIsListening] = useState(false);
-    const [recognition, setRecognition] = useState<any>(null);
+    const [recognition, setRecognition] = useState<SpeechRecognition | null>(null);
 
     useEffect(() => {
         if (typeof window !== 'undefined' && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {

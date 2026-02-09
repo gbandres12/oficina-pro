@@ -34,7 +34,8 @@ export default function LoginPage() {
                 router.push("/dashboard");
                 router.refresh();
             }
-        } catch (error) {
+        } catch (error: unknown) {
+            console.error('Login error:', error);
             toast.error("Ocorreu um erro ao fazer login");
         } finally {
             setLoading(false);

@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 
-interface Point {
+export interface Point {
   id: string;
   x: number;
   y: number;
@@ -21,7 +21,7 @@ export default function InteractiveCarDiagram({ onAddPoint, points }: Interactiv
     const rect = svg.getBoundingClientRect();
     const x = ((e.clientX - rect.left) / rect.width) * 100;
     const y = ((e.clientY - rect.top) / rect.height) * 100;
-    
+
     const id = Math.random().toString(36).substr(2, 9);
     onAddPoint({ id, x, y });
   };
@@ -33,7 +33,7 @@ export default function InteractiveCarDiagram({ onAddPoint, points }: Interactiv
           Mapa de Avarias (Clique para marcar)
         </span>
       </div>
-      
+
       <svg
         viewBox="0 0 800 400"
         className="w-full h-full cursor-crosshair transition-transform duration-500 group-hover:scale-[1.02]"
