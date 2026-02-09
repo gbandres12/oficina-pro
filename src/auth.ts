@@ -27,9 +27,16 @@ export const { auth, signIn, signOut, handlers: { GET, POST } } = NextAuth({
                 if (parsedCredentials.success) {
                     const { email, password } = parsedCredentials.data;
                     const user = await prisma.user.findUnique({ where: { email } });
-                    if (!user) return null;
+                    if (!user) {
+                        console.log('Login failed: User not found', email);
+                        return null;
+                    }
 
                     const passwordsMatch = await bcrypt.compare(password, user.password);
+
+                    if (!passwordsMatch) {
+                        console.log('Login failed: Password mismatch for', email);
+                    }
 
                     if (passwordsMatch) return {
                         id: user.id,
@@ -43,21 +50,4 @@ export const { auth, signIn, signOut, handlers: { GET, POST } } = NextAuth({
             },
         }),
     ],
-    callbacks: {
-        async session({ session, token }) {
-            if (token.sub && session.user) {
-                session.user.id = token.sub;
-            }
-            if (token.role && session.user) {
-                session.user.role = token.role as string;
-            }
-            return session;
-        },
-        async jwt({ token, user }) {
-            if (user) {
-                token.role = (user as any).role;
-            }
-            return token;
-        },
-    },
 });

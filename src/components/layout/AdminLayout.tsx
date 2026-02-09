@@ -22,14 +22,16 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { motion, AnimatePresence } from 'framer-motion';
-import { signOut } from 'next-auth/react';
+import { signOut, useSession } from 'next-auth/react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
+    const { data: session } = useSession();
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const pathname = usePathname();
 
     const menuItems = [
         { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
+        { icon: Car, label: 'Gestão de Pátio', href: '/gestao-patio' },
         { icon: ClipboardList, label: 'Ordens de Serviço', href: '/ordens' },
         { icon: Car, label: 'Veículos', href: '/veiculos' },
         { icon: Users, label: 'Clientes', href: '/clientes' },
@@ -87,10 +89,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         <div className="p-4 border-t border-border">
                             <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
                                 <div className="flex items-center gap-3 mb-3">
-                                    <div className="w-8 h-8 rounded-full bg-slate-200" />
+                                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
+                                        {session?.user?.name?.[0] || 'U'}
+                                    </div>
                                     <div>
-                                        <div className="text-xs font-bold font-montserrat uppercase">Mecânico Logado</div>
-                                        <div className="text-[10px] text-muted-foreground">Gabriel Andres</div>
+                                        <div className="text-xs font-bold font-montserrat uppercase leading-none">
+                                            {(session?.user as any)?.role === 'ADMIN' ? 'Acesso Master' : 'Operador'}
+                                        </div>
+                                        <div className="text-[10px] text-muted-foreground truncate max-w-[120px]">
+                                            {session?.user?.name || 'Carregando...'}
+                                        </div>
                                     </div>
                                 </div>
                                 <Button
