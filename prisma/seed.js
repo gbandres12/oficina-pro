@@ -18,18 +18,18 @@ async function main() {
         },
     });
 
-    const employee = await prisma.user.upsert({
-        where: { email: 'funcionario@andres.com' },
+    const checklistUser = await prisma.user.upsert({
+        where: { email: 'checklist@andres.com' },
         update: {},
         create: {
-            email: 'funcionario@andres.com',
-            name: 'João Mecânico',
-            password: employeePassword,
+            email: 'checklist@andres.com',
+            name: 'Pedro Checklist',
+            password: employeePassword, // use the same default password: user123
             role: 'EMPLOYEE',
         },
     });
 
-    console.log({ admin, employee });
+    console.log({ admin, employee, checklistUser });
 }
 
 main()

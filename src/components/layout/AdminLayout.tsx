@@ -36,6 +36,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         { icon: Package, label: 'Estoque', href: '/estoque' },
         { icon: ShoppingCart, label: 'PDV', href: '/pdv' },
         { icon: BarChart3, label: 'Financeiro', href: '/financeiro' },
+        { icon: Settings, label: 'Acesso Master', href: '/configuracoes/usuarios' },
     ];
 
     return (
