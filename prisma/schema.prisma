@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
+  provider   = "prisma-client-js"
   engineType = "library"
 }
 
@@ -8,71 +8,61 @@ datasource db {
 }
 
 model Client {
-  id        String    @id @default(cuid())
+  id        String         @id @default(cuid())
   name      String
-  email     String?
   phone     String
-  document  String?   @unique
-  vehicles  Vehicle[]
+  email     String?
+  document  String?        @unique
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
   orders    ServiceOrder[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  vehicles  Vehicle[]
 }
 
 model Vehicle {
-  id        String    @id @default(cuid())
-  plate     String    @unique
-  vin       String?   @unique
+  id        String         @id @default(cuid())
+  plate     String         @unique
   model     String
   brand     String
-  year      Int?
   clientId  String
-  client    Client    @relation(fields: [clientId], references: [id])
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  vin       String?        @unique
+  year      Int?
   orders    ServiceOrder[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-}
-
-enum OrderStatus {
-  OPEN
-  QUOTATION
-  APPROVED
-  IN_PROGRESS
-  WAITING_PARTS
-  FINISHED
-  CANCELLED
+  client    Client         @relation(fields: [clientId], references: [id])
 }
 
 model ServiceOrder {
-  id              String         @id @default(cuid())
-  number          Int            @unique @default(autoincrement())
-  status          OrderStatus    @default(OPEN)
-  entryDate       DateTime       @default(now())
-  exitDate        DateTime?
-  km              Int
-  fuelLevel       Int?           // Percentage
-  mechanic        String?
-  observations    String?
-  clientReport    String?        // Recorded by Voice-to-Text
-  clientId        String
-  client          Client         @relation(fields: [clientId], references: [id])
-  vehicleId       String
-  vehicle         Vehicle        @relation(fields: [vehicleId], references: [id])
-  checklistItems  ChecklistItem[]
-  damagePoints    DamagePoint[]
-  services        ServiceItem[]
-  parts           PartItem[]
-  financials      FinancialTransaction[]
-  signatureUrl    String?        // URL to digital signature image
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  id             String                 @id @default(cuid())
+  number         Int                    @unique @default(autoincrement())
+  status         OrderStatus            @default(OPEN)
+  km             Int
+  clientId       String
+  vehicleId      String
+  clientReport   String?
+  signatureUrl   String?
+  createdAt      DateTime               @default(now())
+  entryDate      DateTime               @default(now())
+  exitDate       DateTime?
+  fuelLevel      Int?
+  mechanic       String?
+  observations   String?
+  updatedAt      DateTime               @updatedAt
+  checklistItems ChecklistItem[]
+  damagePoints   DamagePoint[]
+  financials     FinancialTransaction[]
+  parts          PartItem[]
+  services       ServiceItem[]
+  client         Client                 @relation(fields: [clientId], references: [id])
+  vehicle        Vehicle                @relation(fields: [vehicleId], references: [id])
 }
 
 model ChecklistItem {
   id             String       @id @default(cuid())
   name           String
-  section        String       // "Visual", "Mechanical", "Fluids", etc.
-  status         String       // "OK", "ATTENTION", "REPLACE", "YES", "NO"
+  section        String
+  status         String
   observation    String?
   photoUrl       String?
   serviceOrderId String
@@ -108,23 +98,84 @@ model PartItem {
 }
 
 model InventoryItem {
-  id          String   @id @default(cuid())
+  id          String     @id @default(cuid())
   name        String
-  sku         String   @unique
+  sku         String     @unique
   quantity    Decimal
   minQuantity Decimal
   unitPrice   Decimal
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
   sales       SaleItem[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
 }
 
 model CostCenter {
   id           String                 @id @default(cuid())
-  name         String                 @unique // e.g., "Operacional", "Marketing", "RH", "Infraestrutura"
+  name         String                 @unique
   description  String?
-  transactions FinancialTransaction[]
   createdAt    DateTime               @default(now())
+  transactions FinancialTransaction[]
+}
+
+model FinancialTransaction {
+  id             String            @id @default(cuid())
+  type           TransactionType
+  amount         Decimal
+  description    String
+  category       String?
+  status         TransactionStatus @default(PAID)
+  date           DateTime          @default(now())
+  costCenterId   String?
+  serviceOrderId String?
+  createdAt      DateTime          @default(now())
+  costCenter     CostCenter?       @relation(fields: [costCenterId], references: [id])
+  serviceOrder   ServiceOrder?     @relation(fields: [serviceOrderId], references: [id])
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      UserRole @default(EMPLOYEE)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  sales     Sale[]
+}
+
+model Sale {
+  id            String     @id @default(cuid())
+  number        Int        @unique @default(autoincrement())
+  total         Decimal
+  discount      Decimal    @default(0)
+  paymentMethod String
+  status        String     @default("COMPLETED")
+  sellerId      String
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  seller        User       @relation(fields: [sellerId], references: [id])
+  items         SaleItem[]
+}
+
+model SaleItem {
+  id         String        @id @default(cuid())
+  saleId     String
+  productId  String
+  quantity   Decimal
+  unitPrice  Decimal
+  totalPrice Decimal
+  product    InventoryItem @relation(fields: [productId], references: [id])
+  sale       Sale          @relation(fields: [saleId], references: [id])
+}
+
+enum OrderStatus {
+  OPEN
+  QUOTATION
+  APPROVED
+  IN_PROGRESS
+  WAITING_PARTS
+  FINISHED
+  CANCELLED
 }
 
 enum TransactionType {
@@ -138,61 +189,7 @@ enum TransactionStatus {
   CANCELLED
 }
 
-model FinancialTransaction {
-  id             String            @id @default(cuid())
-  type           TransactionType
-  amount         Decimal
-  description    String
-  category       String?           // e.g., "Mão de Obra", "Peças", "Aluguel", "Energia"
-  status         TransactionStatus @default(PAID)
-  date           DateTime          @default(now())
-  
-  costCenterId   String?
-  costCenter     CostCenter?       @relation(fields: [costCenterId], references: [id])
-  
-  serviceOrderId String?
-  serviceOrder   ServiceOrder?     @relation(fields: [serviceOrderId], references: [id])
-  
-  createdAt      DateTime          @default(now())
-}
-
 enum UserRole {
   ADMIN
   EMPLOYEE
-}
-
-model User {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  password  String
-  role      UserRole @default(EMPLOYEE)
-  sales     Sale[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Sale {
-  id              String      @id @default(cuid())
-  number          Int         @unique @default(autoincrement())
-  total           Decimal
-  discount        Decimal     @default(0)
-  paymentMethod   String      // "CASH", "CARD", "PIX"
-  status          String      @default("COMPLETED") // "COMPLETED", "CANCELLED"
-  items           SaleItem[]
-  sellerId        String
-  seller          User        @relation(fields: [sellerId], references: [id])
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-}
-
-model SaleItem {
-  id          String   @id @default(cuid())
-  saleId      String
-  sale        Sale     @relation(fields: [saleId], references: [id])
-  productId   String
-  product     InventoryItem @relation(fields: [productId], references: [id])
-  quantity    Decimal
-  unitPrice   Decimal
-  totalPrice  Decimal
 }
