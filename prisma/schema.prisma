@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model Client {
@@ -114,6 +113,7 @@ model InventoryItem {
   quantity    Decimal
   minQuantity Decimal
   unitPrice   Decimal
+  sales       SaleItem[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
@@ -153,4 +153,45 @@ model FinancialTransaction {
   serviceOrder   ServiceOrder?     @relation(fields: [serviceOrderId], references: [id])
   
   createdAt      DateTime          @default(now())
+}
+
+enum UserRole {
+  ADMIN
+  EMPLOYEE
+}
+
+model User {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      UserRole @default(EMPLOYEE)
+  sales     Sale[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Sale {
+  id              String      @id @default(cuid())
+  number          Int         @unique @default(autoincrement())
+  total           Decimal
+  discount        Decimal     @default(0)
+  paymentMethod   String      // "CASH", "CARD", "PIX"
+  status          String      @default("COMPLETED") // "COMPLETED", "CANCELLED"
+  items           SaleItem[]
+  sellerId        String
+  seller          User        @relation(fields: [sellerId], references: [id])
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+model SaleItem {
+  id          String   @id @default(cuid())
+  saleId      String
+  sale        Sale     @relation(fields: [saleId], references: [id])
+  productId   String
+  product     InventoryItem @relation(fields: [productId], references: [id])
+  quantity    Decimal
+  unitPrice   Decimal
+  totalPrice  Decimal
 }

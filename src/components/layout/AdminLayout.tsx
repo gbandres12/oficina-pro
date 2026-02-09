@@ -16,11 +16,13 @@ import {
     Bell,
     LogOut,
     Menu,
+    ShoppingCart,
     X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { motion, AnimatePresence } from 'framer-motion';
+import { signOut } from 'next-auth/react';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -32,6 +34,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         { icon: Car, label: 'Veículos', href: '/veiculos' },
         { icon: Users, label: 'Clientes', href: '/clientes' },
         { icon: Package, label: 'Estoque', href: '/estoque' },
+        { icon: ShoppingCart, label: 'PDV', href: '/pdv' },
         { icon: BarChart3, label: 'Financeiro', href: '/financeiro' },
     ];
 
@@ -89,7 +92,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                         <div className="text-[10px] text-muted-foreground">Gabriel Andres</div>
                                     </div>
                                 </div>
-                                <Button variant="ghost" className="w-full text-xs h-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 justify-start px-2">
+                                <Button
+                                    variant="ghost"
+                                    className="w-full text-xs h-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 justify-start px-2"
+                                    onClick={() => signOut({ callbackUrl: '/login' })}
+                                >
                                     <LogOut className="w-3.5 h-3.5 mr-2" /> Encerrar Sessão
                                 </Button>
                             </div>

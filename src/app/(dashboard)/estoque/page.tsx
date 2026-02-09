@@ -11,13 +11,17 @@ import {
     FileDown,
     MoreHorizontal,
     Box,
-    Tag
+    Tag,
+    FileUp
 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Progress } from '@/components/ui/progress';
 
 export default function EstoquePage() {
     const parts = [
@@ -36,11 +40,31 @@ export default function EstoquePage() {
                     <p className="text-muted-foreground font-medium">Controle de inventário, reposição e movimentações.</p>
                 </div>
                 <div className="flex gap-3">
-                    <Button variant="outline" className="gap-2 rounded-xl">
-                        <FileDown className="w-4 h-4" /> Relatório de Inventário
+                    <Button variant="outline" className="gap-2 rounded-xl h-11 px-6 font-bold uppercase text-xs">
+                        <FileDown className="w-4 h-4" /> Exportar
                     </Button>
-                    <Button className="gap-2 rounded-xl bg-primary shadow-lg shadow-primary/20">
-                        <Plus className="w-4 h-4" /> Cadastrar Peça
+                    <label className="cursor-pointer">
+                        <input
+                            type="file"
+                            className="hidden"
+                            accept=".xml"
+                            onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+
+                                toast.promise(new Promise(resolve => setTimeout(resolve, 2000)), {
+                                    loading: 'Processando XML da NF-e...',
+                                    success: 'Produtos importados com sucesso!',
+                                    error: 'Erro ao processar arquivo'
+                                });
+                            }}
+                        />
+                        <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 text-primary h-11 px-6 font-bold uppercase text-xs hover:bg-primary/10 transition-colors">
+                            <FileUp className="w-4 h-4" /> Importar XML
+                        </div>
+                    </label>
+                    <Button className="gap-2 rounded-xl bg-primary h-11 px-6 font-bold uppercase text-xs shadow-lg shadow-primary/20">
+                        <Plus className="w-4 h-4" /> Nova Peça
                     </Button>
                 </div>
             </div>

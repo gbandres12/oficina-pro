@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Inter, Montserrat } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
-import AdminLayout from "@/components/layout/AdminLayout";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-geist-sans" });
 const montserrat = Montserrat({ subsets: ["latin"], variable: "--font-montserrat" });
@@ -20,9 +19,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className={`${inter.variable} ${montserrat.variable} dark`}>
       <body className="antialiased font-sans">
-        <AdminLayout>
-          {children}
-        </AdminLayout>
+        {children}
         <Toaster position="top-right" richColors />
       </body>
     </html>
