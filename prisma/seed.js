@@ -1,25 +1,8 @@
 const { PrismaClient } = require('@prisma/client');
-const { PrismaPg } = require('@prisma/adapter-pg');
-const { Pool } = require('pg');
 const { hash } = require('bcrypt-ts');
 require('dotenv').config();
 
-const databaseUrl = process.env.DATABASE_URL || "";
-// Incluímos prisma+postgres:// pois o proxy local do Prisma também precisa do adaptador pg para funcionar corretamente no ambiente Node.js
-const isStandardPostgres = databaseUrl.startsWith('postgres://') ||
-    databaseUrl.startsWith('postgresql://') ||
-    databaseUrl.startsWith('prisma+postgres://');
-
-function createPrismaClient() {
-    if (isStandardPostgres) {
-        const pool = new Pool({ connectionString: databaseUrl });
-        const adapter = new PrismaPg(pool);
-        return new PrismaClient({ adapter, log: ['error', 'warn'] });
-    }
-    return new PrismaClient({ log: ['error', 'warn'] });
-}
-
-const prisma = createPrismaClient();
+const prisma = new PrismaClient();
 
 async function main() {
     console.log('Iniciando seed...');
@@ -29,7 +12,7 @@ async function main() {
     const admin = await prisma.user.upsert({
         where: { email: 'admin@andres.com' },
         update: {
-            password: adminPassword, // Garantir que a senha seja resetada se já existir
+            password: adminPassword,
         },
         create: {
             email: 'admin@andres.com',
@@ -60,10 +43,6 @@ async function main() {
 main()
     .catch((e) => {
         console.error('Erro no Seed:', e);
-        if (e.code === 'ECONNREFUSED') {
-            console.error('\n❌ ERRO DE CONEXÃO: O banco de dados não está respondendo.');
-            console.error('Certifique-se de que o Prisma Postgres local ou seu banco remoto está ativo.');
-        }
         process.exit(1);
     })
     .finally(async () => {
