@@ -1,9 +1,9 @@
 import NextAuth from "next-auth";
-import { authConfig } from "./auth.config";
 import Credentials from "next-auth/providers/credentials";
+import { authConfig } from "./auth.config";
 import { z } from "zod";
-import { prisma } from "@/lib/prisma";
 import { compare } from "bcrypt-ts";
+import { db } from "@/lib/db";
 import { type DefaultSession } from "next-auth";
 
 declare module "next-auth" {
@@ -27,13 +27,13 @@ export const { auth, signIn, signOut, handlers: { GET, POST } } = NextAuth({
                 if (parsedCredentials.success) {
                     const { email, password } = parsedCredentials.data;
                     try {
-                        // Log de tentativa no banco (para debug em produção)
-                        await prisma.$executeRaw`INSERT INTO "DebugLog" (message) VALUES (${`Tentativa de login: ${email}`})`;
+                        // Log de tentativa no banco
+                        await db.query('INSERT INTO "DebugLog" (message) VALUES ($1)', [`Tentativa de login: ${email}`]);
 
-                        const user = await prisma.user.findUnique({ where: { email } });
+                        const user = await db.fetchOne('SELECT * FROM "User" WHERE email = $1', [email]);
 
                         if (!user) {
-                            await prisma.$executeRaw`INSERT INTO "DebugLog" (message) VALUES (${`Falha login: Usuário não encontrado - ${email}`})`;
+                            await db.query('INSERT INTO "DebugLog" (message) VALUES ($1)', [`Falha login: Usuário não encontrado - ${email}`]);
                             console.error('[AUTH] Falha: Usuário não encontrado no banco:', email);
                             return null;
                         }
@@ -41,13 +41,14 @@ export const { auth, signIn, signOut, handlers: { GET, POST } } = NextAuth({
                         const passwordsMatch = await compare(password, user.password);
 
                         if (!passwordsMatch) {
-                            await prisma.$executeRaw`INSERT INTO "DebugLog" (message) VALUES (${`Falha login: Senha incorreta - ${email}`})`;
+                            await db.query('INSERT INTO "DebugLog" (message) VALUES ($1)', [`Falha login: Senha incorreta - ${email}`]);
                             console.error('[AUTH] Falha: Senha incorreta para:', email);
                             return null;
                         }
 
-                        await prisma.$executeRaw`INSERT INTO "DebugLog" (message) VALUES (${`Sucesso login: ${email}`})`;
+                        await db.query('INSERT INTO "DebugLog" (message) VALUES ($1)', [`Sucesso login: ${email}`]);
                         console.log('[AUTH] Sucesso: Usuário autenticado:', email);
+
                         return {
                             id: user.id,
                             name: user.name,
@@ -55,10 +56,7 @@ export const { auth, signIn, signOut, handlers: { GET, POST } } = NextAuth({
                             role: user.role,
                         };
                     } catch (dbError: any) {
-                        try {
-                            // Tenta logar o erro no banco se a conexão permitir
-                            console.error('[AUTH] ERRO CRÍTICO no Banco de Dados:', dbError);
-                        } catch (e) { }
+                        console.error('[AUTH] ERRO CRÍTICO no Banco de Dados:', dbError);
                         return null;
                     }
                 }
@@ -67,4 +65,19 @@ export const { auth, signIn, signOut, handlers: { GET, POST } } = NextAuth({
             },
         }),
     ],
+    callbacks: {
+        async session({ session, token }: any) {
+            if (token.sub && session.user) {
+                session.user.id = token.sub;
+                session.user.role = token.role;
+            }
+            return session;
+        },
+        async jwt({ token, user }: any) {
+            if (user) {
+                token.role = user.role;
+            }
+            return token;
+        },
+    },
 });

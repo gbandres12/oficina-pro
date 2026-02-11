@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { db } from '@/lib/db';
 
 export async function POST(request: Request) {
     try {
@@ -9,27 +9,24 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Lista de itens inválida' }, { status: 400 });
         }
 
-        const createdItems = await Promise.all(
+        const results = await Promise.all(
             items.map(async (item: any) => {
-                return prisma.inventoryItem.upsert({
-                    where: { sku: item.sku },
-                    update: {
-                        quantity: { increment: item.quantity || 0 },
-                        unitPrice: item.price || undefined,
-                    },
-                    create: {
-                        name: item.name,
-                        sku: item.sku,
-                        quantity: item.quantity || 0,
-                        minQuantity: item.minQuantity || 5,
-                        unitPrice: item.price || 0,
-                    }
-                });
+                const id = `inv_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+                return db.fetchOne(`
+                    INSERT INTO "InventoryItem" (id, name, sku, quantity, "minQuantity", "unitPrice", "updatedAt")
+                    VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
+                    ON CONFLICT (sku) DO UPDATE SET
+                        quantity = "InventoryItem".quantity + EXCLUDED.quantity,
+                        "unitPrice" = EXCLUDED."unitPrice",
+                        "updatedAt" = CURRENT_TIMESTAMP
+                    RETURNING *
+                `, [id, item.name, item.sku, item.quantity || 0, item.minQuantity || 5, item.price || 0]);
             })
         );
 
-        return NextResponse.json({ success: true, count: createdItems.length });
+        return NextResponse.json({ success: true, count: results.length });
     } catch (error: any) {
+        console.error('Import error:', error);
         return NextResponse.json({ error: error.message }, { status: 500 });
     }
 }

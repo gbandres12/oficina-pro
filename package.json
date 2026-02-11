@@ -4,10 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
+    "build": "next build",
     "start": "next start",
-    "lint": "eslint",
-    "postinstall": "prisma generate"
+    "lint": "eslint"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
@@ -25,6 +24,7 @@
     "@radix-ui/react-switch": "^1.2.6",
     "@radix-ui/react-tabs": "^1.1.13",
     "@radix-ui/react-toast": "^1.2.15",
+    "@supabase/supabase-js": "^2.95.3",
     "bcrypt-ts": "^8.0.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

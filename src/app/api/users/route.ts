@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { db } from '@/lib/db';
 import { hash } from 'bcrypt-ts';
 import { auth } from '@/auth';
 
@@ -18,30 +18,23 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Campos obrigatórios ausentes' }, { status: 400 });
         }
 
-        const existingUser = await prisma.user.findUnique({
-            where: { email }
-        });
+        const existingUser = await db.fetchOne('SELECT id FROM "User" WHERE email = $1', [email]);
 
         if (existingUser) {
             return NextResponse.json({ error: 'E-mail já cadastrado' }, { status: 400 });
         }
 
         const hashedPassword = await hash(password, 10);
+        const userId = `user_${Date.now()}`;
 
-        const user = await prisma.user.create({
-            data: {
-                name,
-                email,
-                password: hashedPassword,
-                role
-            }
-        });
+        const user = await db.fetchOne(
+            'INSERT INTO "User" (id, name, email, password, role, "updatedAt") VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP) RETURNING id, name, email, role',
+            [userId, name, email, hashedPassword, role]
+        );
 
-        const { password: _password, ...userWithoutPassword } = user;
-        return NextResponse.json(userWithoutPassword);
-    } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Erro interno';
-        return NextResponse.json({ error: message }, { status: 500 });
+        return NextResponse.json(user);
+    } catch (error: any) {
+        return NextResponse.json({ error: error.message || 'Erro interno' }, { status: 500 });
     }
 }
 
@@ -53,18 +46,9 @@ export async function GET() {
     }
 
     try {
-        const users = await prisma.user.findMany({
-            select: {
-                id: true,
-                name: true,
-                email: true,
-                role: true,
-                createdAt: true
-            }
-        });
+        const users = await db.fetchAll('SELECT id, name, email, role, "createdAt" FROM "User" ORDER BY "createdAt" DESC');
         return NextResponse.json(users);
-    } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : 'Erro interno';
-        return NextResponse.json({ error: message }, { status: 500 });
+    } catch (error: any) {
+        return NextResponse.json({ error: error.message || 'Erro interno' }, { status: 500 });
     }
 }

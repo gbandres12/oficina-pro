@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { db } from '@/lib/db';
 import { hash } from 'bcrypt-ts';
 
 export async function POST(request: Request) {
@@ -10,28 +10,23 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Campos obrigatórios ausentes' }, { status: 400 });
         }
 
-        const existingUser = await prisma.user.findUnique({
-            where: { email }
-        });
+        const existingUser = await db.fetchOne('SELECT id FROM "User" WHERE email = $1', [email]);
 
         if (existingUser) {
             return NextResponse.json({ error: 'E-mail já cadastrado' }, { status: 400 });
         }
 
         const hashedPassword = await hash(password, 10);
+        const userId = `user_${Date.now()}`;
 
-        const user = await prisma.user.create({
-            data: {
-                name,
-                email,
-                password: hashedPassword,
-                role: 'ADMIN' // Por padrão, o primeiro cadastro é ADMIN
-            }
-        });
+        const result = await db.fetchOne(
+            'INSERT INTO "User" (id, name, email, password, role, "updatedAt") VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP) RETURNING id, name, email, role',
+            [userId, name, email, hashedPassword, 'ADMIN']
+        );
 
-        const { password: _password, ...userWithoutPassword } = user;
-        return NextResponse.json(userWithoutPassword);
+        return NextResponse.json(result);
     } catch (error: any) {
+        console.error('Register error:', error);
         return NextResponse.json({ error: error.message || 'Erro interno' }, { status: 500 });
     }
 }
