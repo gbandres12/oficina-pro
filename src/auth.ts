@@ -3,7 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import { authConfig } from "./auth.config";
 import { z } from "zod";
 import { compare } from "bcrypt-ts";
-import { supabase } from "@/lib/supabase";
+import { db } from "@/lib/db";
 import { type DefaultSession } from "next-auth";
 
 declare module "next-auth" {
@@ -27,16 +27,12 @@ export const { auth, signIn, signOut, handlers: { GET, POST } } = NextAuth({
                 if (parsedCredentials.success) {
                     const { email, password } = parsedCredentials.data;
                     try {
-                        console.log('[AUTH] Tentativa de login via SDK para:', email);
+                        console.log('[AUTH] Tentativa de login via SQL direto para:', email);
 
-                        const { data: user, error } = await supabase
-                            .from('User')
-                            .select('*')
-                            .eq('email', email)
-                            .single();
+                        const user = await db.fetchOne('SELECT * FROM "User" WHERE email = $1', [email]);
 
-                        if (error || !user) {
-                            console.error('[AUTH] Usuário não encontrado ou erro no SDK:', error?.message);
+                        if (!user) {
+                            console.error('[AUTH] Usuário não encontrado:', email);
                             return null;
                         }
 
@@ -47,7 +43,7 @@ export const { auth, signIn, signOut, handlers: { GET, POST } } = NextAuth({
                             return null;
                         }
 
-                        console.log('[AUTH] Sucesso SDK!');
+                        console.log('[AUTH] Login bem-sucedido via SQL!');
                         return {
                             id: user.id,
                             name: user.name,
@@ -55,7 +51,7 @@ export const { auth, signIn, signOut, handlers: { GET, POST } } = NextAuth({
                             role: user.role,
                         };
                     } catch (err: any) {
-                        console.error('[AUTH] ERRO INESPERADO SDK:', err.message);
+                        console.error('[AUTH] ERRO SQL:', err.message);
                         return null;
                     }
                 }
