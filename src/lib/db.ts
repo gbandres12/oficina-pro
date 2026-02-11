@@ -10,8 +10,9 @@ function resolveConnectionString() {
         ['SUPABASE_DB_URL', process.env.SUPABASE_DB_URL],
     ];
 
-    const postgresCandidate = envCandidates.find(([, value]) => {
-        return Boolean(value && /^postgres(ql)?:\/\//i.test(value));
+    const postgresCandidate = envCandidates.find((candidate): candidate is [string, string] => {
+        const value = candidate[1];
+        return typeof value === 'string' && /^postgres(ql)?:\/\//i.test(value);
     });
 
     if (!postgresCandidate) {
