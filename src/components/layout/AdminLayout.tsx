@@ -20,14 +20,19 @@ import {
     X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { motion, AnimatePresence } from 'framer-motion';
 import { signOut, useSession } from 'next-auth/react';
+import { toast } from 'sonner';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const { data: session } = useSession();
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const pathname = usePathname();
+    const userRole = (session?.user as { role?: string } | undefined)?.role;
+
+    const handleNotifications = () => {
+        toast.info('Central de notificações em desenvolvimento.');
+    };
 
     const menuItems = [
         { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
@@ -94,7 +99,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                     </div>
                                     <div>
                                         <div className="text-xs font-bold font-montserrat uppercase leading-none">
-                                            {(session?.user as any)?.role === 'ADMIN' ? 'Acesso Master' : 'Operador'}
+                                            {userRole === 'ADMIN' ? 'Acesso Master' : 'Operador'}
                                         </div>
                                         <div className="text-[10px] text-muted-foreground truncate max-w-[120px]">
                                             {session?.user?.name || 'Carregando...'}
@@ -133,10 +138,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     </div>
 
                     <div className="flex items-center gap-3">
-                        <Button variant="outline" size="sm" className="hidden sm:flex gap-2 rounded-full border-primary/20 text-primary">
-                            <Plus className="w-4 h-4" /> Nova O.S.
+                        <Button asChild variant="outline" size="sm" className="hidden sm:flex gap-2 rounded-full border-primary/20 text-primary">
+                            <Link href="/ordens">
+                                <Plus className="w-4 h-4" /> Nova O.S.
+                            </Link>
                         </Button>
-                        <Button variant="ghost" size="icon" className="relative">
+                        <Button variant="ghost" size="icon" className="relative" onClick={handleNotifications}>
                             <Bell className="w-5 h-5" />
                             <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900" />
                         </Button>
@@ -156,4 +163,3 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
     );
 }
-

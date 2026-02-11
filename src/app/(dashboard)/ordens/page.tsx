@@ -2,12 +2,8 @@
 
 import React from 'react';
 import {
-    ClipboardList,
     Search,
     Plus,
-    Clock,
-    CheckCircle2,
-    AlertCircle,
     Wrench,
     User,
     Car,
@@ -15,10 +11,11 @@ import {
     MoreVertical,
     Kanban
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { toast } from 'sonner';
 
 export default function OrdensPage() {
     const osList = [
@@ -28,6 +25,22 @@ export default function OrdensPage() {
         { id: '4', number: '2026-004', customer: 'Ana Oliveira', vehicle: 'Jeep Compass (KJM-4455)', status: 'OPEN', technician: '-', date: '09/02', priority: 'MEDIUM' },
     ];
 
+    const handleNewOs = () => {
+        toast.success('Fluxo de abertura de O.S. iniciado.');
+    };
+
+    const handleKanban = () => {
+        toast.info('Visualização Kanban será disponibilizada na próxima atualização.');
+    };
+
+    const handleFilter = () => {
+        toast.info('Filtro avançado em desenvolvimento.');
+    };
+
+    const handleOsActions = (osNumber: string) => {
+        toast.message(`Abrindo ações da O.S. ${osNumber}`);
+    };
+
     return (
         <div className="p-6 space-y-8 max-w-7xl mx-auto">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -36,10 +49,10 @@ export default function OrdensPage() {
                     <p className="text-muted-foreground font-medium">Controle de fluxo de trabalho e produtividade da bancada.</p>
                 </div>
                 <div className="flex gap-3">
-                    <Button variant="outline" className="gap-2 rounded-xl">
+                    <Button variant="outline" className="gap-2 rounded-xl" onClick={handleKanban}>
                         <Kanban className="w-4 h-4" /> Visualizar Kanban
                     </Button>
-                    <Button className="gap-2 rounded-xl bg-primary shadow-lg shadow-primary/20">
+                    <Button className="gap-2 rounded-xl bg-primary shadow-lg shadow-primary/20" onClick={handleNewOs}>
                         <Plus className="w-4 h-4" /> Abrir Nova O.S.
                     </Button>
                 </div>
@@ -70,7 +83,7 @@ export default function OrdensPage() {
                         <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                         <Input placeholder="Buscar O.S., Cliente ou Placa..." className="pl-10 h-11 rounded-xl shadow-sm border-none bg-white dark:bg-slate-900" />
                     </div>
-                    <Button variant="outline" className="h-11 rounded-xl px-6">Filtrar</Button>
+                    <Button variant="outline" className="h-11 rounded-xl px-6" onClick={handleFilter}>Filtrar</Button>
                 </div>
 
                 <div className="grid gap-4">
@@ -123,7 +136,7 @@ export default function OrdensPage() {
                                                 <Calendar className="w-3.5 h-3.5" /> {os.date}
                                             </div>
                                         </div>
-                                        <Button variant="ghost" size="icon" className="h-10 w-10">
+                                        <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => handleOsActions(os.number)}>
                                             <MoreVertical className="w-5 h-5" />
                                         </Button>
                                     </div>
