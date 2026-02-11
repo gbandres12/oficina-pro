@@ -47,20 +47,44 @@ export default function EstoquePage() {
                         <input
                             type="file"
                             className="hidden"
-                            accept=".xml"
+                            accept=".xml,.json"
                             onChange={async (e) => {
                                 const file = e.target.files?.[0];
                                 if (!file) return;
 
-                                toast.promise(new Promise(resolve => setTimeout(resolve, 2000)), {
-                                    loading: 'Processando XML da NF-e...',
-                                    success: 'Produtos importados com sucesso!',
-                                    error: 'Erro ao processar arquivo'
+                                const formData = new FormData();
+                                formData.append('file', file);
+
+                                toast.promise(async () => {
+                                    // Se for JSON, usamos o endpoint de stock
+                                    if (file.name.endsWith('.json')) {
+                                        const text = await file.text();
+                                        const items = JSON.parse(text);
+                                        const res = await fetch('/api/stock/import', {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ items }),
+                                        });
+                                        if (!res.ok) throw new Error('Falha na importação');
+                                        return await res.json();
+                                    } else {
+                                        // Se for XML, usamos o endpoint de parts
+                                        const res = await fetch('/api/parts/import', {
+                                            method: 'POST',
+                                            body: formData,
+                                        });
+                                        if (!res.ok) throw new Error('Falha no processamento do XML');
+                                        return await res.json();
+                                    }
+                                }, {
+                                    loading: 'Processando arquivo...',
+                                    success: (data) => `Sucesso! Itens processados.`,
+                                    error: (err) => err.message
                                 });
                             }}
                         />
                         <div className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 text-primary h-11 px-6 font-bold uppercase text-xs hover:bg-primary/10 transition-colors">
-                            <FileUp className="w-4 h-4" /> Importar XML
+                            <FileUp className="w-4 h-4" /> Importar Produtos
                         </div>
                     </label>
                     <Button className="gap-2 rounded-xl bg-primary h-11 px-6 font-bold uppercase text-xs shadow-lg shadow-primary/20">
