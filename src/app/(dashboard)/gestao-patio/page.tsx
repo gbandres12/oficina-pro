@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Car,
     Wrench,
@@ -12,13 +12,18 @@ import {
     ArrowUpRight,
     PackageSearch,
     Timer,
-    History
+    History,
+    Plus,
+    Loader2,
+    LayoutGrid,
+    LayoutList
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
     Table,
     TableBody,
@@ -27,22 +32,115 @@ import {
     TableHeader,
     TableRow
 } from '@/components/ui/table';
+import { toast } from 'sonner';
+
+interface PatioVehicle {
+    id: string;
+    number: number;
+    vehiclePlate: string;
+    vehicleModel: string;
+    vehicleBrand: string;
+    clientName: string;
+    entryDate: string;
+    status: string;
+    progress: number;
+    mechanic: string | null;
+    partsStatus: string;
+}
 
 export default function GestaoPatioPage() {
-    // Simulando dados que viriam do Prisma
-    const patioData = [
-        { id: '1', plate: 'BRA-2E19', model: 'Honda Civic G10', entry: '08/02 09:15', status: 'IN_PROGRESS', parts: 'OK', progress: 75, technician: 'Marcos Oliveira' },
-        { id: '2', plate: 'KLA-4455', model: 'Toyota Corolla Hybrid', entry: '09/02 10:30', status: 'WAITING_PARTS', parts: 'MISSING', progress: 15, technician: 'Gabriel Andres' },
-        { id: '3', plate: 'OJH-9088', model: 'VW Golf GTI', entry: '07/02 14:00', status: 'APPROVED', parts: 'ORDERED', progress: 5, technician: 'Pendante' },
-        { id: '4', plate: 'NXX-1122', model: 'Jeep Compass', entry: '09/02 08:00', status: 'QUOTATION', parts: 'ANALYZING', progress: 0, technician: 'Ricardo' },
-        { id: '5', plate: 'PLM-7711', model: 'BMW 320i', entry: '05/02 11:20', status: 'FINISHED', parts: 'OK', progress: 100, technician: 'Marcos Oliveira' },
+    const [vehicles, setVehicles] = useState<PatioVehicle[]>([]);
+    const [stats, setStats] = useState({
+        totalPatio: 0,
+        waitingParts: 0,
+        inProgress: 0,
+        avgDays: '0.0'
+    });
+    const [loading, setLoading] = useState(true);
+    const [view, setView] = useState<'list' | 'kanban'>('list');
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            const response = await fetch('/api/patio/vehicles');
+            const data = await response.json();
+
+            if (data.success) {
+                setVehicles(data.vehicles);
+                setStats(data.stats);
+            } else {
+                toast.error('Erro ao carregar dados do pátio');
+            }
+        } catch (error) {
+            toast.error('Erro ao conectar com o servidor');
+            console.error('Erro ao buscar dados do pátio:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    const filteredVehicles = vehicles.filter(v =>
+        v.vehiclePlate.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        v.vehicleModel.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        v.clientName.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const getStatusConfig = (status: string) => {
+        const configs: Record<string, { label: string; className: string }> = {
+            'OPEN': { label: 'ABERTA', className: 'bg-slate-500' },
+            'QUOTATION': { label: 'ORÇAMENTO', className: 'bg-purple-500' },
+            'APPROVED': { label: 'APROVADA', className: 'bg-green-600' },
+            'IN_PROGRESS': { label: 'EM EXECUÇÃO', className: 'bg-blue-600' },
+            'WAITING_PARTS': { label: 'AGUARDANDO PEÇAS', className: 'bg-amber-500' },
+        };
+        return configs[status] || { label: status, className: 'bg-slate-500' };
+    };
+
+    const getPartsStatusBadge = (partsStatus: string) => {
+        switch (partsStatus) {
+            case 'OK':
+                return <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 gap-1 rounded-lg text-[10px] py-1 font-bold">
+                    <CheckCircle2 size={12} /> PEÇAS OK
+                </Badge>;
+            case 'MISSING':
+                return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 gap-1 rounded-lg text-[10px] py-1 font-bold">
+                    <AlertCircle size={12} /> AGUARDANDO PEÇAS
+                </Badge>;
+            case 'ORDERED':
+                return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 gap-1 rounded-lg text-[10px] py-1 font-bold">
+                    <Clock size={12} /> EM PEDIDO
+                </Badge>;
+            default:
+                return <Badge variant="outline" className="bg-slate-50 text-slate-600 border-slate-200 gap-1 rounded-lg text-[10px] py-1 font-bold uppercase">
+                    ANALISANDO
+                </Badge>;
+        }
+    };
+
+    const formatDate = (dateString: string) => {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    };
+
+    // Kanban columns
+    const kanbanColumns = [
+        { id: 'OPEN', title: 'Abertas', statuses: ['OPEN'] },
+        { id: 'QUOTATION', title: 'Orçamento', statuses: ['QUOTATION'] },
+        { id: 'APPROVED', title: 'Aprovadas', statuses: ['APPROVED'] },
+        { id: 'IN_PROGRESS', title: 'Em Execução', statuses: ['IN_PROGRESS'] },
+        { id: 'WAITING_PARTS', title: 'Aguardando Peças', statuses: ['WAITING_PARTS'] },
     ];
 
-    const stats = [
-        { label: 'Total no Pátio', value: '14', sub: 'Veículos hoje', icon: Car, color: 'text-blue-600', bg: 'bg-blue-50' },
-        { label: 'Aguardando Peças', value: '4', sub: 'Pendência externa', icon: PackageSearch, color: 'text-amber-600', bg: 'bg-amber-50' },
-        { label: 'Em Execução', value: '6', sub: 'Produção ativa', icon: Wrench, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-        { label: 'Tempo Médio', value: '2.4', sub: 'Dias por O.S.', icon: Timer, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+    const statsData = [
+        { label: 'Total no Pátio', value: stats.totalPatio.toString(), sub: 'Veículos hoje', icon: Car, color: 'text-blue-600', bg: 'bg-blue-50' },
+        { label: 'Aguardando Peças', value: stats.waitingParts.toString(), sub: 'Pendência externa', icon: PackageSearch, color: 'text-amber-600', bg: 'bg-amber-50' },
+        { label: 'Em Execução', value: stats.inProgress.toString(), sub: 'Produção ativa', icon: Wrench, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+        { label: 'Tempo Médio', value: stats.avgDays, sub: 'Dias por O.S.', icon: Timer, color: 'text-emerald-600', bg: 'bg-emerald-50' },
     ];
 
     return (
@@ -65,7 +163,7 @@ export default function GestaoPatioPage() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {stats.map((stat) => (
+                {statsData.map((stat) => (
                     <Card key={stat.label} className="border-none shadow-xl shadow-slate-200/50 dark:shadow-none dark:border transition-all hover:scale-[1.02] cursor-default">
                         <CardContent className="p-6">
                             <div className="flex justify-between items-start">
@@ -96,114 +194,143 @@ export default function GestaoPatioPage() {
                         <div className="flex gap-2">
                             <div className="relative">
                                 <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                                <Input placeholder="Buscar placa..." className="pl-9 h-11 w-[250px] rounded-xl text-xs font-medium border-slate-200" />
+                                <Input
+                                    placeholder="Buscar placa..."
+                                    className="pl-9 h-11 w-[250px] rounded-xl text-xs font-medium border-slate-200"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
                             </div>
-                            <Button variant="outline" size="icon" className="h-11 w-11 rounded-xl">
-                                <Filter className="w-4 h-4" />
-                            </Button>
+                            <Tabs value={view} onValueChange={(v) => setView(v as 'list' | 'kanban')} className="w-auto">
+                                <TabsList className="h-11 rounded-xl">
+                                    <TabsTrigger value="list" className="rounded-lg gap-2">
+                                        <LayoutList className="w-4 h-4" /> Lista
+                                    </TabsTrigger>
+                                    <TabsTrigger value="kanban" className="rounded-lg gap-2">
+                                        <LayoutGrid className="w-4 h-4" /> Kanban
+                                    </TabsTrigger>
+                                </TabsList>
+                            </Tabs>
                         </div>
                     </div>
                 </CardHeader>
                 <CardContent className="p-0">
-                    <Table>
-                        <TableHeader>
-                            <TableRow className="bg-slate-50/50 dark:bg-slate-900/50 hover:bg-transparent">
-                                <TableHead className="text-[10px] uppercase font-bold px-8 h-12">Veículo</TableHead>
-                                <TableHead className="text-[10px] uppercase font-bold h-12">Status de Peças</TableHead>
-                                <TableHead className="text-[10px] uppercase font-bold h-12">Etapa Técnica</TableHead>
-                                <TableHead className="text-[10px] uppercase font-bold h-12">Produção</TableHead>
-                                <TableHead className="text-[10px] uppercase font-bold text-right px-8 h-12">Ação</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {patioData.map((v) => (
-                                <TableRow key={v.id} className="group transition-all hover:bg-slate-50 dark:hover:bg-slate-800/80">
-                                    <TableCell className="px-8 py-5">
-                                        <div className="flex items-center gap-4">
-                                            <div className="flex flex-col items-center justify-center w-14 h-9 border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-lg shadow-sm">
-                                                <div className="w-full bg-blue-600 h-1.5 rounded-t-sm" />
-                                                <span className="text-[10px] font-black tracking-tighter leading-none mt-1">{v.plate}</span>
-                                            </div>
-                                            <div>
-                                                <div className="text-sm font-black">{v.model}</div>
-                                                <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide">Entrada: {v.entry}</div>
-                                            </div>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex items-center gap-2">
-                                            {v.parts === 'OK' ? (
-                                                <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 gap-1 rounded-lg text-[10px] py-1 font-bold">
-                                                    <CheckCircle2 size={12} /> PEÇAS OK
-                                                </Badge>
-                                            ) : v.parts === 'MISSING' ? (
-                                                <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200 gap-1 rounded-lg text-[10px] py-1 font-bold">
-                                                    <AlertCircle size={12} /> AGUARDANDO PEÇAS
-                                                </Badge>
-                                            ) : v.parts === 'ORDERED' ? (
-                                                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 gap-1 rounded-lg text-[10px] py-1 font-bold">
-                                                    <Clock size={12} /> EM PEDIDO
-                                                </Badge>
-                                            ) : (
-                                                <Badge variant="outline" className="bg-slate-50 text-slate-600 border-slate-200 gap-1 rounded-lg text-[10px] py-1 font-bold uppercase">
-                                                    Analisando
-                                                </Badge>
-                                            )}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge className={`
-                                            rounded-full text-[10px] font-bold py-1 px-3
-                                            ${v.status === 'IN_PROGRESS' ? 'bg-blue-600' :
-                                                v.status === 'WAITING_PARTS' ? 'bg-amber-500' :
-                                                    v.status === 'FINISHED' ? 'bg-emerald-600' : 'bg-slate-500'}
-                                        `}>
-                                            {v.status}
-                                        </Badge>
-                                        <div className="text-[10px] text-muted-foreground mt-1 font-bold uppercase truncate max-w-[120px]">
-                                            Técnico: {v.technician}
-                                        </div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="w-32 space-y-1.5">
-                                            <div className="flex justify-between text-[9px] font-black text-muted-foreground">
-                                                <span>PRODUÇÃO</span>
-                                                <span>{v.progress}%</span>
-                                            </div>
-                                            <Progress value={v.progress} className="h-1.5" />
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-right px-8">
-                                        <Button variant="ghost" size="sm" className="rounded-xl font-bold text-primary group-hover:bg-primary group-hover:text-white transition-all h-9">
-                                            Detalhes <ArrowUpRight className="ml-1 w-4 h-4" />
-                                        </Button>
-                                    </TableCell>
+                    {loading ? (
+                        <div className="p-12 flex flex-col items-center justify-center gap-4">
+                            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                            <p className="text-muted-foreground">Carregando veículos...</p>
+                        </div>
+                    ) : view === 'list' ? (
+                        <Table>
+                            <TableHeader>
+                                <TableRow className="bg-slate-50/50 dark:bg-slate-900/50 hover:bg-transparent">
+                                    <TableHead className="text-[10px] uppercase font-bold px-8 h-12">Veículo</TableHead>
+                                    <TableHead className="text-[10px] uppercase font-bold h-12">Status de Peças</TableHead>
+                                    <TableHead className="text-[10px] uppercase font-bold h-12">Etapa Técnica</TableHead>
+                                    <TableHead className="text-[10px] uppercase font-bold h-12">Produção</TableHead>
+                                    <TableHead className="text-[10px] uppercase font-bold text-right px-8 h-12">Ação</TableHead>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                            </TableHeader>
+                            <TableBody>
+                                {filteredVehicles.map((v) => {
+                                    const statusConfig = getStatusConfig(v.status);
+                                    return (
+                                        <TableRow key={v.id} className="group transition-all hover:bg-slate-50 dark:hover:bg-slate-800/80">
+                                            <TableCell className="px-8 py-5">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="flex flex-col items-center justify-center w-14 h-9 border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-lg shadow-sm">
+                                                        <div className="w-full bg-blue-600 h-1.5 rounded-t-sm" />
+                                                        <span className="text-[10px] font-black tracking-tighter leading-none mt-1">{v.vehiclePlate}</span>
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-sm font-black">{v.vehicleBrand} {v.vehicleModel}</div>
+                                                        <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-wide">
+                                                            Entrada: {formatDate(v.entryDate)}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                {getPartsStatusBadge(v.partsStatus)}
+                                            </TableCell>
+                                            <TableCell>
+                                                <Badge className={`rounded-full text-[10px] font-bold py-1 px-3 ${statusConfig.className}`}>
+                                                    {statusConfig.label}
+                                                </Badge>
+                                                <div className="text-[10px] text-muted-foreground mt-1 font-bold uppercase truncate max-w-[120px]">
+                                                    Técnico: {v.mechanic || 'Pendente'}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="w-32 space-y-1.5">
+                                                    <div className="flex justify-between text-[9px] font-black text-muted-foreground">
+                                                        <span>PRODUÇÃO</span>
+                                                        <span>{v.progress}%</span>
+                                                    </div>
+                                                    <Progress value={v.progress} className="h-1.5" />
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-right px-8">
+                                                <Button variant="ghost" size="sm" className="rounded-xl font-bold text-primary group-hover:bg-primary group-hover:text-white transition-all h-9">
+                                                    Detalhes <ArrowUpRight className="ml-1 w-4 h-4" />
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })}
+                            </TableBody>
+                        </Table>
+                    ) : (
+                        <div className="p-6 overflow-x-auto">
+                            <div className="flex gap-4 min-w-max">
+                                {kanbanColumns.map((column) => {
+                                    const columnVehicles = filteredVehicles.filter(v => column.statuses.includes(v.status));
+                                    return (
+                                        <div key={column.id} className="flex-shrink-0 w-[300px]">
+                                            <div className="bg-slate-100 dark:bg-slate-800 rounded-xl p-4">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <h3 className="font-bold text-sm uppercase tracking-wide">{column.title}</h3>
+                                                    <Badge variant="secondary" className="rounded-full">
+                                                        {columnVehicles.length}
+                                                    </Badge>
+                                                </div>
+                                                <div className="space-y-3">
+                                                    {columnVehicles.map((v) => (
+                                                        <Card key={v.id} className="hover:shadow-md transition-shadow cursor-move">
+                                                            <CardContent className="p-4">
+                                                                <div className="flex items-center gap-2 mb-2">
+                                                                    <div className="flex flex-col items-center justify-center w-12 h-7 border border-slate-300 rounded text-[9px] font-black">
+                                                                        {v.vehiclePlate}
+                                                                    </div>
+                                                                    <Badge className="text-[9px]">{v.number}</Badge>
+                                                                </div>
+                                                                <div className="text-sm font-bold mb-1">{v.vehicleBrand} {v.vehicleModel}</div>
+                                                                <div className="text-xs text-muted-foreground mb-2">{v.clientName}</div>
+                                                                {getPartsStatusBadge(v.partsStatus)}
+                                                                <div className="mt-3">
+                                                                    <Progress value={v.progress} className="h-1.5" />
+                                                                    <div className="text-[9px] text-muted-foreground mt-1">
+                                                                        {v.progress}% completo
+                                                                    </div>
+                                                                </div>
+                                                            </CardContent>
+                                                        </Card>
+                                                    ))}
+                                                    {columnVehicles.length === 0 && (
+                                                        <div className="text-center text-muted-foreground text-sm py-8">
+                                                            Nenhum veículo
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
         </div>
     );
-}
-
-function Plus(props: any) {
-    return (
-        <svg
-            {...props}
-            xmlns="http://www.w3.org/2000/svg"
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-        >
-            <path d="M5 12h14" />
-            <path d="M12 5v14" />
-        </svg>
-    )
 }

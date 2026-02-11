@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
+import { ImportCSVDialog } from '@/components/clients/ImportCSVDialog';
 
 interface Client {
     id: string;
@@ -84,9 +85,12 @@ export default function ClientesPage() {
                     </h1>
                     <p className="text-muted-foreground">Gerencie sua base de clientes e histórico</p>
                 </div>
-                <Button className="gap-2 rounded-xl bg-primary shadow-lg shadow-primary/20">
-                    <UserPlus className="w-4 h-4" /> Novo Cliente
-                </Button>
+                <div className="flex gap-3">
+                    <ImportCSVDialog onSuccess={fetchClients} />
+                    <Button className="gap-2 rounded-xl bg-primary shadow-lg shadow-primary/20">
+                        <UserPlus className="w-4 h-4" /> Novo Cliente
+                    </Button>
+                </div>
             </div>
 
             {/* Stats */}
