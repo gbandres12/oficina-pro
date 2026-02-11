@@ -1,129 +1,249 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Car,
     Search,
     Plus,
-    Settings,
-    History,
-    ShieldCheck,
-    Fuel,
-    Gauge,
+    User,
     Calendar,
-    MoreVertical,
-    ExternalLink
+    Gauge,
+    Loader2,
+    MoreVertical
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { toast } from 'sonner';
+
+interface Vehicle {
+    id: string;
+    plate: string;
+    vin: string | null;
+    model: string;
+    brand: string;
+    year: number | null;
+    ownerName: string;
+    ownerId: string;
+    currentStatus: string | null;
+    lastKm: number | null;
+    createdAt: string;
+}
 
 export default function VeiculosPage() {
-    const vehicles = [
-        { id: '1', plate: 'BRA-2E19', model: 'Honda Civic Touring', color: 'Branco', owner: 'João Silva', km: '45.000', status: 'IN_SERVICE' },
-        { id: '2', plate: 'ABC-1234', model: 'VW Golf GTI', color: 'Preto', owner: 'Pedro Costa', km: '82.000', status: 'READY' },
-        { id: '3', plate: 'XYZ-9876', model: 'Toyota Corolla Hybrid', color: 'Prata', owner: 'Maria Santos', km: '12.500', status: 'OUTSIDE' },
-        { id: '4', plate: 'KJM-4455', model: 'Jeep Compass S', color: 'Azul', owner: 'Ana Oliveira', km: '31.000', status: 'IN_SERVICE' },
-        { id: '5', plate: 'OFF-0000', model: 'Ford Ranger Raptor', color: 'Cinza', owner: 'Carlos Ferreira', km: '5.000', status: 'READY' },
-    ];
+    const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const fetchVehicles = async () => {
+        setLoading(true);
+        try {
+            const response = await fetch('/api/vehicles/list');
+            const data = await response.json();
+
+            if (data.success) {
+                setVehicles(data.vehicles);
+            } else {
+                toast.error('Erro ao carregar veículos');
+            }
+        } catch (error) {
+            toast.error('Erro ao conectar com o servidor');
+            console.error('Erro ao buscar veículos:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchVehicles();
+    }, []);
+
+    const filteredVehicles = vehicles.filter(vehicle =>
+        vehicle.plate.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        vehicle.model.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        vehicle.brand.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        vehicle.ownerName.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const getStatusConfig = (status: string | null) => {
+        if (!status) return { label: 'Sem Ordem', variant: 'outline' as const, className: 'border-gray-200 bg-gray-50 text-gray-700' };
+
+        const configs: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; className: string }> = {
+            'OPEN': { label: 'Aberta', variant: 'outline', className: 'border-blue-200 bg-blue-50 text-blue-700' },
+            'IN_PROGRESS': { label: 'Em Manutenção', variant: 'default', className: 'bg-yellow-500' },
+            'WAITING_PARTS': { label: 'Aguardando Peças', variant: 'secondary', className: 'bg-orange-500 text-white' },
+            'COMPLETED': { label: 'Finalizada', variant: 'outline', className: 'border-green-200 bg-green-50 text-green-700' },
+            'APPROVED': { label: 'Aprovada', variant: 'default', className: 'bg-green-600' },
+        };
+        return configs[status] || { label: status, variant: 'outline' as const, className: '' };
+    };
+
+    const formatKm = (km: number | null) => {
+        if (!km) return '-';
+        return new Intl.NumberFormat('pt-BR').format(km) + ' km';
+    };
 
     return (
-        <div className="p-6 space-y-8 max-w-7xl mx-auto">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="p-8 space-y-6">
+            <div className="flex justify-between items-start">
                 <div>
-                    <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white">Gerenciamento de Veículos</h1>
-                    <p className="text-muted-foreground font-medium">Frota ativa, histórico técnico e especificações por placa.</p>
+                    <h1 className="text-3xl font-bold mb-2 flex items-center gap-3">
+                        <div className="p-3 rounded-xl bg-gradient-to-br from-orange-500 to-orange-600 text-white">
+                            <Car className="w-6 h-6" />
+                        </div>
+                        Veículos
+                    </h1>
+                    <p className="text-muted-foreground">Gerencie a frota de veículos cadastrados</p>
                 </div>
                 <Button className="gap-2 rounded-xl bg-primary shadow-lg shadow-primary/20">
                     <Plus className="w-4 h-4" /> Vincular Veículo
                 </Button>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                <Card className="lg:col-span-1 border-none shadow-xl bg-gradient-to-br from-slate-800 to-slate-950 text-white overflow-hidden relative">
-                    <div className="absolute -right-8 -bottom-8 opacity-10">
-                        <Car size={200} />
-                    </div>
-                    <CardHeader>
-                        <CardTitle className="text-lg">Filtro Rápido</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4 relative z-10">
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] uppercase font-bold text-slate-400">Placa do Veículo</label>
-                            <Input placeholder="Digitar placa..." className="bg-white/10 border-white/10 text-white placeholder:text-white/30" />
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-4">
+                <Card className="border-none shadow-md">
+                    <CardContent className="p-6">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 rounded-xl bg-orange-50 text-orange-600">
+                                <Car className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <div className="text-2xl font-bold">{vehicles.length}</div>
+                                <div className="text-sm text-muted-foreground">Total de Veículos</div>
+                            </div>
                         </div>
-                        <div className="space-y-1.5">
-                            <label className="text-[10px] uppercase font-bold text-slate-400">Proprietário</label>
-                            <Input placeholder="Nome do cliente..." className="bg-white/10 border-white/10 text-white placeholder:text-white/30" />
-                        </div>
-                        <Button className="w-full bg-white text-slate-950 hover:bg-slate-200 mt-2 font-bold uppercase text-[10px] tracking-widest">
-                            Buscar Veículo
-                        </Button>
                     </CardContent>
                 </Card>
+                <Card className="border-none shadow-md">
+                    <CardContent className="p-6">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 rounded-xl bg-yellow-50 text-yellow-600">
+                                <Gauge className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <div className="text-2xl font-bold">
+                                    {vehicles.filter(v => v.currentStatus === 'IN_PROGRESS').length}
+                                </div>
+                                <div className="text-sm text-muted-foreground">Em Manutenção</div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="border-none shadow-md">
+                    <CardContent className="p-6">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 rounded-xl bg-blue-50 text-blue-600">
+                                <User className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <div className="text-2xl font-bold">
+                                    {new Set(vehicles.map(v => v.ownerId)).size}
+                                </div>
+                                <div className="text-sm text-muted-foreground">Proprietários</div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
 
-                <Card className="lg:col-span-3 border-none shadow-xl">
-                    <CardHeader className="flex flex-row items-center justify-between pb-2">
-                        <div>
-                            <CardTitle className="text-lg">Listagem de Frota</CardTitle>
-                            <CardDescription>Veículos cadastrados no sistema</CardDescription>
+            {/* Search */}
+            <Card className="border-none shadow-md">
+                <CardContent className="p-6">
+                    <div className="flex gap-4">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                            <Input
+                                placeholder="Buscar por placa, modelo, marca ou proprietário..."
+                                className="pl-10 rounded-xl"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
                         </div>
-                    </CardHeader>
-                    <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow className="bg-slate-50/50 dark:bg-slate-900/50">
-                                    <TableHead className="text-[10px] uppercase font-bold">Placa</TableHead>
-                                    <TableHead className="text-[10px] uppercase font-bold">Veículo / Detalhes</TableHead>
-                                    <TableHead className="text-[10px] uppercase font-bold">Proprietário</TableHead>
-                                    <TableHead className="text-[10px] uppercase font-bold">Status</TableHead>
-                                    <TableHead className="w-[100px]"></TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {vehicles.map((v) => (
-                                    <TableRow key={v.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-900/50 transition-colors">
-                                        <TableCell>
-                                            <div className="w-20 h-8 border-2 border-slate-900 dark:border-white rounded-md flex items-center justify-center font-bold text-xs bg-slate-100 dark:bg-slate-800 relative overflow-hidden">
-                                                <div className="absolute top-0 w-full h-1.5 bg-blue-600" />
-                                                {v.plate}
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Vehicles List */}
+            <div className="space-y-3">
+                {loading ? (
+                    <Card className="border-none shadow-md">
+                        <CardContent className="p-12">
+                            <div className="flex flex-col items-center justify-center gap-4 text-muted-foreground">
+                                <Loader2 className="w-8 h-8 animate-spin" />
+                                <p>Carregando veículos...</p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                ) : filteredVehicles.length === 0 ? (
+                    <Card className="border-none shadow-md">
+                        <CardContent className="p-12">
+                            <div className="flex flex-col items-center justify-center gap-4 text-muted-foreground">
+                                <Car className="w-12 h-12" />
+                                <div className="text-center">
+                                    <p className="font-semibold text-lg">Nenhum veículo encontrado</p>
+                                    <p className="text-sm">Veículos serão cadastrados automaticamente ao criar ordens de serviço</p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                ) : (
+                    filteredVehicles.map((vehicle) => {
+                        const statusConfig = getStatusConfig(vehicle.currentStatus);
+                        return (
+                            <Card key={vehicle.id} className="border-none shadow-md hover:shadow-lg transition-shadow">
+                                <CardContent className="p-6">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-6 flex-1">
+                                            <div className="text-center min-w-[100px]">
+                                                <div className="text-xs text-muted-foreground mb-1">Placa</div>
+                                                <div className="font-bold text-lg bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded">
+                                                    {vehicle.plate}
+                                                </div>
                                             </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="text-sm font-black">{v.model}</div>
-                                            <div className="flex gap-2 text-[10px] text-muted-foreground font-bold uppercase">
-                                                <span className="flex items-center gap-1"><Gauge className="w-3 h-3" /> {v.km} km</span>
-                                                <span className="flex items-center gap-1"><Fuel className="w-3 h-3" /> {v.color}</span>
+                                            <div className="h-12 w-px bg-border" />
+                                            <div className="flex-1 grid grid-cols-4 gap-6">
+                                                <div>
+                                                    <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                                                        <Car className="w-3 h-3" /> Veículo
+                                                    </div>
+                                                    <div className="font-bold">{vehicle.brand} {vehicle.model}</div>
+                                                    {vehicle.year && (
+                                                        <div className="text-xs text-muted-foreground">{vehicle.year}</div>
+                                                    )}
+                                                </div>
+                                                <div>
+                                                    <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                                                        <User className="w-3 h-3" /> Proprietário
+                                                    </div>
+                                                    <div className="font-medium">{vehicle.ownerName}</div>
+                                                </div>
+                                                <div>
+                                                    <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                                                        <Gauge className="w-3 h-3" /> Última KM
+                                                    </div>
+                                                    <div className="font-medium">{formatKm(vehicle.lastKm)}</div>
+                                                </div>
+                                                <div>
+                                                    <div className="text-xs text-muted-foreground mb-1">Status Atual</div>
+                                                    <Badge variant={statusConfig.variant} className={statusConfig.className}>
+                                                        {statusConfig.label}
+                                                    </Badge>
+                                                </div>
                                             </div>
-                                        </TableCell>
-                                        <TableCell className="text-sm font-medium">{v.owner}</TableCell>
-                                        <TableCell>
-                                            <Badge variant="outline" className={
-                                                v.status === 'IN_SERVICE' ? 'bg-blue-500/10 text-blue-600 border-blue-500/20' :
-                                                    v.status === 'READY' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : 'text-slate-400'
-                                            }>
-                                                {v.status === 'IN_SERVICE' ? 'Em Manutenção' :
-                                                    v.status === 'READY' ? 'Pronto / Liberado' : 'Fora da Oficina'}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <div className="flex justify-end gap-1">
-                                                <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                    <History className="w-4 h-4 text-slate-400" />
-                                                </Button>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                    <ExternalLink className="w-4 h-4 text-slate-400" />
-                                                </Button>
-                                            </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <Button variant="ghost" size="icon" className="rounded-xl">
+                                                <MoreVertical className="w-4 h-4" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        );
+                    })
+                )}
             </div>
         </div>
     );

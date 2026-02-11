@@ -1,112 +1,232 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Users,
     Search,
-    Plus,
-    Mail,
+    UserPlus,
     Phone,
-    MapPin,
-    ExternalLink,
-    ChevronRight,
-    UserPlus
+    Mail,
+    FileText,
+    DollarSign,
+    Loader2,
+    MoreVertical
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast } from 'sonner';
+
+interface Client {
+    id: string;
+    name: string;
+    email: string | null;
+    phone: string;
+    document: string | null;
+    orderCount: number;
+    totalSpent: number;
+    createdAt: string;
+}
 
 export default function ClientesPage() {
-    const [view, setView] = React.useState('all');
+    const [clients, setClients] = useState<Client[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [activeTab, setActiveTab] = useState('all');
 
-    const customers = [
-        { id: '1', name: 'João Silva', email: 'joao.silva@email.com', phone: '(11) 98888-7777', orders: 4, spent: 4500.50, status: 'VIP', pending: false },
-        { id: '2', name: 'Maria Santos', email: 'maria.santos@gmail.com', phone: '(11) 97777-6666', orders: 1, spent: 450.00, status: 'REGULAR', pending: true },
-        { id: '3', name: 'Pedro Costa', email: 'p.costa@provedor.net', phone: '(11) 96666-5555', orders: 8, spent: 12800.00, status: 'VIP', pending: false },
-        { id: '4', name: 'Ana Oliveira', email: 'oliveira.ana@outlook.com', phone: '(11) 95555-4444', orders: 2, spent: 1200.00, status: 'REGULAR', pending: true },
-        { id: '5', name: 'Carlos Ferreira', email: 'carlos.f@empresa.com.br', phone: '(11) 94444-3333', orders: 0, spent: 0.00, status: 'NEW', pending: false },
-    ];
+    const fetchClients = async () => {
+        setLoading(true);
+        try {
+            const response = await fetch('/api/clients/list');
+            const data = await response.json();
 
-    const filteredCustomers = view === 'pending'
-        ? customers.filter(c => c.pending)
-        : customers;
+            if (data.success) {
+                setClients(data.clients);
+            } else {
+                toast.error('Erro ao carregar clientes');
+            }
+        } catch (error) {
+            toast.error('Erro ao conectar com o servidor');
+            console.error('Erro ao buscar clientes:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchClients();
+    }, []);
+
+    const filteredClients = clients.filter(client =>
+        client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        client.phone.includes(searchTerm) ||
+        (client.email && client.email.toLowerCase().includes(searchTerm.toLowerCase()))
+    );
+
+    const formatCurrency = (value: number) => {
+        return new Intl.NumberFormat('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
+        }).format(value);
+    };
 
     return (
-        <div className="p-6 space-y-8 max-w-7xl mx-auto">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="p-8 space-y-6">
+            <div className="flex justify-between items-start">
                 <div>
-                    <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white uppercase tracking-tighter">Gestão de Clientes</h1>
-                    <p className="text-muted-foreground font-medium">Base de proprietários e histórico de serviços.</p>
+                    <h1 className="text-3xl font-bold mb-2 flex items-center gap-3">
+                        <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500 to-purple-600 text-white">
+                            <Users className="w-6 h-6" />
+                        </div>
+                        Clientes
+                    </h1>
+                    <p className="text-muted-foreground">Gerencie sua base de clientes e histórico</p>
                 </div>
-                <Button className="gap-2 rounded-xl bg-primary h-11 px-6 font-bold uppercase text-xs shadow-lg shadow-primary/20">
+                <Button className="gap-2 rounded-xl bg-primary shadow-lg shadow-primary/20">
                     <UserPlus className="w-4 h-4" /> Novo Cliente
                 </Button>
             </div>
 
-            <Tabs defaultValue="all" className="w-full" onValueChange={setView}>
-                <div className="flex flex-col md:flex-row gap-4 items-center justify-between mb-6">
-                    <TabsList className="bg-white dark:bg-slate-900 p-1 rounded-xl border border-border/50 shadow-sm h-12">
-                        <TabsTrigger value="all" className="rounded-lg font-bold text-xs uppercase px-6">Todos os Clientes</TabsTrigger>
-                        <TabsTrigger value="pending" className="rounded-lg font-bold text-xs uppercase px-6 text-red-500">Pendentes de Pagamento</TabsTrigger>
-                    </TabsList>
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-4">
+                <Card className="border-none shadow-md">
+                    <CardContent className="p-6">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 rounded-xl bg-purple-50 text-purple-600">
+                                <Users className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <div className="text-2xl font-bold">{clients.length}</div>
+                                <div className="text-sm text-muted-foreground">Total de Clientes</div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="border-none shadow-md">
+                    <CardContent className="p-6">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 rounded-xl bg-green-50 text-green-600">
+                                <DollarSign className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <div className="text-2xl font-bold">
+                                    {formatCurrency(clients.reduce((sum, c) => sum + Number(c.totalSpent), 0))}
+                                </div>
+                                <div className="text-sm text-muted-foreground">Faturamento Total</div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+                <Card className="border-none shadow-md">
+                    <CardContent className="p-6">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 rounded-xl bg-blue-50 text-blue-600">
+                                <FileText className="w-5 h-5" />
+                            </div>
+                            <div>
+                                <div className="text-2xl font-bold">
+                                    {clients.reduce((sum, c) => sum + Number(c.orderCount), 0)}
+                                </div>
+                                <div className="text-sm text-muted-foreground">Ordens de Serviço</div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
 
-                    <div className="flex items-center gap-4 bg-white dark:bg-slate-900 px-4 h-12 rounded-xl border border-border/50 shadow-sm flex-1 md:max-w-md">
-                        <Search className="w-4 h-4 text-muted-foreground" />
-                        <Input placeholder="Buscar por nome, placa ou CPF..." className="border-none bg-transparent shadow-none text-xs focus-visible:ring-0" />
+            {/* Search */}
+            <Card className="border-none shadow-md">
+                <CardContent className="p-6">
+                    <div className="flex gap-4">
+                        <div className="relative flex-1">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                            <Input
+                                placeholder="Buscar por nome, telefone ou e-mail..."
+                                className="pl-10 rounded-xl"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
                     </div>
-                </div>
+                </CardContent>
+            </Card>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {filteredCustomers.map((customer) => (
-                        <Card key={customer.id} className="group border-none shadow-xl hover:scale-[1.02] transition-all cursor-pointer overflow-hidden p-0 bg-white dark:bg-slate-900">
-                            <div className={`h-1.5 w-full ${customer.pending ? 'bg-red-500' : 'bg-slate-100 dark:bg-slate-800'} group-hover:bg-primary transition-colors`} />
-                            <CardHeader className="p-6 pb-4">
-                                <div className="flex justify-between items-start">
-                                    <div className="w-12 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center font-black text-slate-400 group-hover:bg-primary/10 group-hover:text-primary transition-colors">
-                                        {customer.name.charAt(0)}
+            {/* Clients List */}
+            <div className="space-y-3">
+                {loading ? (
+                    <Card className="border-none shadow-md">
+                        <CardContent className="p-12">
+                            <div className="flex flex-col items-center justify-center gap-4 text-muted-foreground">
+                                <Loader2 className="w-8 h-8 animate-spin" />
+                                <p>Carregando clientes...</p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                ) : filteredClients.length === 0 ? (
+                    <Card className="border-none shadow-md">
+                        <CardContent className="p-12">
+                            <div className="flex flex-col items-center justify-center gap-4 text-muted-foreground">
+                                <Users className="w-12 h-12" />
+                                <div className="text-center">
+                                    <p className="font-semibold text-lg">Nenhum cliente encontrado</p>
+                                    <p className="text-sm">Clientes serão criados automaticamente ao criar ordens de serviço</p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                ) : (
+                    filteredClients.map((client) => (
+                        <Card key={client.id} className="border-none shadow-md hover:shadow-lg transition-shadow">
+                            <CardContent className="p-6">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-6 flex-1">
+                                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
+                                            {client.name.charAt(0).toUpperCase()}
+                                        </div>
+                                        <div className="flex-1 grid grid-cols-5 gap-6">
+                                            <div className="col-span-2">
+                                                <div className="text-xs text-muted-foreground mb-1">Nome</div>
+                                                <div className="font-bold text-lg">{client.name}</div>
+                                            </div>
+                                            <div>
+                                                <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                                                    <Phone className="w-3 h-3" /> Telefone
+                                                </div>
+                                                <div className="font-medium">{client.phone}</div>
+                                            </div>
+                                            <div>
+                                                <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                                                    <FileText className="w-3 h-3" /> Ordens
+                                                </div>
+                                                <div className="font-medium">{client.orderCount}</div>
+                                            </div>
+                                            <div>
+                                                <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                                                    <DollarSign className="w-3 h-3" /> Total Gasto
+                                                </div>
+                                                <div className="font-medium">{formatCurrency(Number(client.totalSpent))}</div>
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="flex flex-col gap-1 items-end">
-                                        <Badge variant="outline" className={
-                                            customer.status === 'VIP' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
-                                                customer.status === 'NEW' ? 'bg-blue-500/10 text-blue-600 border-blue-500/20' : 'text-slate-400'
-                                        }>
-                                            {customer.status}
-                                        </Badge>
-                                        {customer.pending && (
-                                            <Badge className="bg-red-500 hover:bg-red-600 text-[9px] font-black tracking-widest uppercase py-0">PENDENTE</Badge>
+                                    <div className="flex items-center gap-3">
+                                        {client.email && (
+                                            <Badge variant="outline" className="gap-1">
+                                                <Mail className="w-3 h-3" />
+                                                {client.email}
+                                            </Badge>
                                         )}
+                                        <Button variant="ghost" size="icon" className="rounded-xl">
+                                            <MoreVertical className="w-4 h-4" />
+                                        </Button>
                                     </div>
                                 </div>
-                                <div className="mt-4">
-                                    <CardTitle className="text-xl font-black">{customer.name}</CardTitle>
-                                    <CardDescription className="flex flex-col gap-1 mt-1 font-medium">
-                                        <span className="flex items-center gap-1.5"><Mail className="w-3 h-3" /> {customer.email}</span>
-                                        <span className="flex items-center gap-1.5"><Phone className="w-3 h-3" /> {customer.phone}</span>
-                                    </CardDescription>
-                                </div>
-                            </CardHeader>
-                            <CardContent className="px-6 pb-6">
-                                <div className="grid grid-cols-2 gap-4 py-4 border-y border-dashed mt-2">
-                                    <div>
-                                        <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">O.S. Totais</div>
-                                        <div className="text-lg font-black">{customer.orders}</div>
-                                    </div>
-                                    <div>
-                                        <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Total Gasto</div>
-                                        <div className="text-lg font-black text-emerald-600">R$ {customer.spent.toLocaleString('pt-BR')}</div>
-                                    </div>
-                                </div>
-                                <Button variant="ghost" className="w-full mt-4 justify-between h-10 text-[10px] font-bold uppercase tracking-widest bg-slate-50 dark:bg-slate-800/50 hover:bg-primary hover:text-white rounded-xl transition-all">
-                                    Ver Ficha Mecânica <ChevronRight className="w-4 h-4" />
-                                </Button>
                             </CardContent>
                         </Card>
-                    ))}
-                </div>
-            </Tabs>
+                    ))
+                )}
+            </div>
         </div>
     );
 }
