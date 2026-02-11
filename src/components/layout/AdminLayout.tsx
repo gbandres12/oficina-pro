@@ -20,7 +20,6 @@ import {
     X
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { motion, AnimatePresence } from 'framer-motion';
 import { signOut, useSession } from 'next-auth/react';
 
@@ -42,24 +41,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     ];
 
     return (
-        <div className="flex h-screen bg-slate-50 dark:bg-slate-950 text-foreground overflow-hidden">
-            {/* Sidebar */}
+        <div className="flex h-screen bg-zinc-100 dark:bg-black text-foreground overflow-hidden">
             <AnimatePresence mode="wait">
                 {isSidebarOpen && (
                     <motion.aside
                         initial={{ x: -280 }}
                         animate={{ x: 0 }}
                         exit={{ x: -280 }}
-                        className="w-72 bg-white dark:bg-slate-900 border-r border-border flex flex-col z-50 fixed inset-y-0 lg:relative"
+                        className="w-72 bg-white dark:bg-zinc-950 border-r border-zinc-300 dark:border-zinc-800 flex flex-col z-50 fixed inset-y-0 lg:relative"
                     >
                         <div className="p-6 flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-primary-foreground font-bold text-xl shadow-lg shadow-primary/20">
-                                    A
-                                </div>
+                                <div className="w-10 h-10 bg-black text-white rounded-xl flex items-center justify-center font-bold text-xl">A</div>
                                 <div className="leading-tight">
                                     <div className="font-bold text-lg tracking-tight">Andres</div>
-                                    <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Oficina Pro</div>
+                                    <div className="text-[10px] text-zinc-500 uppercase font-bold tracking-widest">Oficina Pro</div>
                                 </div>
                             </div>
                             <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(false)} className="lg:hidden">
@@ -74,9 +70,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                     <Link
                                         key={item.label}
                                         href={item.href}
-                                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group ${isActive
-                                            ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
-                                            : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-muted-foreground'
+                                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${isActive
+                                            ? 'bg-black text-white'
+                                            : 'hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-600 dark:text-zinc-300'
                                             }`}
                                     >
                                         <item.icon className="w-5 h-5" />
@@ -86,24 +82,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             })}
                         </nav>
 
-                        <div className="p-4 border-t border-border">
-                            <div className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-2xl">
+                        <div className="p-4 border-t border-zinc-300 dark:border-zinc-800">
+                            <div className="p-4 bg-zinc-100 dark:bg-zinc-900 rounded-2xl">
                                 <div className="flex items-center gap-3 mb-3">
-                                    <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
+                                    <div className="w-8 h-8 rounded-full bg-black text-white flex items-center justify-center font-bold text-xs">
                                         {session?.user?.name?.[0] || 'U'}
                                     </div>
                                     <div>
-                                        <div className="text-xs font-bold font-montserrat uppercase leading-none">
-                                            {(session?.user as any)?.role === 'ADMIN' ? 'Acesso Master' : 'Operador'}
+                                        <div className="text-xs font-bold uppercase leading-none">
+                                            {(session?.user as { role?: string } | undefined)?.role === 'ADMIN' ? 'Acesso Master' : 'Operador'}
                                         </div>
-                                        <div className="text-[10px] text-muted-foreground truncate max-w-[120px]">
+                                        <div className="text-[10px] text-zinc-500 truncate max-w-[120px]">
                                             {session?.user?.name || 'Carregando...'}
                                         </div>
                                     </div>
                                 </div>
                                 <Button
                                     variant="ghost"
-                                    className="w-full text-xs h-8 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/10 justify-start px-2"
+                                    className="w-full text-xs h-8 hover:bg-zinc-200 dark:hover:bg-zinc-800 justify-start px-2"
                                     onClick={() => signOut({ callbackUrl: '/' })}
                                 >
                                     <LogOut className="w-3.5 h-3.5 mr-2" /> Encerrar Sessão
@@ -115,16 +111,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </AnimatePresence>
 
             <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-                {/* Topbar */}
-                <header className="h-16 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-border flex items-center justify-between px-6 sticky top-0 z-40">
+                <header className="h-16 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md border-b border-zinc-300 dark:border-zinc-800 flex items-center justify-between px-6 sticky top-0 z-40">
                     <div className="flex items-center gap-4">
                         {!isSidebarOpen && (
                             <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(true)}>
                                 <Menu className="w-5 h-5" />
                             </Button>
                         )}
-                        <div className="hidden md:flex items-center bg-slate-100 dark:bg-slate-800 rounded-full px-4 py-1.5 w-64 lg:w-96 border border-border/50">
-                            <Search className="w-4 h-4 text-muted-foreground mr-2" />
+                        <div className="hidden md:flex items-center bg-zinc-100 dark:bg-zinc-900 rounded-full px-4 py-1.5 w-64 lg:w-96 border border-zinc-300 dark:border-zinc-700">
+                            <Search className="w-4 h-4 text-zinc-500 mr-2" />
                             <input
                                 placeholder="Buscar placa, cliente ou O.S..."
                                 className="bg-transparent border-none focus:ring-0 text-sm w-full outline-none"
@@ -133,27 +128,20 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     </div>
 
                     <div className="flex items-center gap-3">
-                        <Button variant="outline" size="sm" className="hidden sm:flex gap-2 rounded-full border-primary/20 text-primary">
+                        <Button variant="outline" size="sm" className="hidden sm:flex gap-2 rounded-full border-zinc-400 text-zinc-800 dark:text-zinc-100">
                             <Plus className="w-4 h-4" /> Nova O.S.
                         </Button>
                         <Button variant="ghost" size="icon" className="relative">
                             <Bell className="w-5 h-5" />
-                            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900" />
+                            <span className="absolute top-2 right-2 w-2 h-2 bg-black rounded-full border-2 border-white dark:border-zinc-950" />
                         </Button>
-                        <div className="w-px h-6 bg-border mx-1" />
-                        <div className="flex flex-col items-end mr-2 hidden sm:flex">
-                            <span className="text-[10px] font-bold text-primary">STATUS DA OFICINA</span>
-                            <span className="text-xs font-bold text-emerald-500">OPERANDO 100%</span>
-                        </div>
                     </div>
                 </header>
 
-                {/* Content Area */}
-                <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950">
+                <div className="flex-1 overflow-y-auto bg-zinc-100 dark:bg-black">
                     {children}
                 </div>
             </main>
         </div>
     );
 }
-

@@ -1,28 +1,23 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { auth } from '@/auth';
 
 export async function GET() {
-    const envVars = {
-        has_database_url: !!process.env.DATABASE_URL,
-        database_url_length: process.env.DATABASE_URL?.length || 0,
-        database_url_prefix: process.env.DATABASE_URL?.substring(0, 15) + '...',
-        node_env: process.env.NODE_ENV,
-    };
+    const session = await auth();
+
+    if (!session || session.user?.role !== 'ADMIN') {
+        return NextResponse.json({ error: 'Não autorizado' }, { status: 401 });
+    }
 
     try {
-        const result = await db.query('SELECT NOW()');
+        const result = await db.query<{ now: string }>('SELECT NOW()::text as now');
         return NextResponse.json({
-            status: 'success',
-            env: envVars,
-            db_time: result.rows[0].now
+            status: 'ok',
+            dbTime: result.rows[0]?.now ?? null,
+            environment: process.env.NODE_ENV,
         });
-    } catch (error: any) {
-        return NextResponse.json({
-            status: 'error',
-            env: envVars,
-            error: error.message,
-            stack: error.stack,
-            code: error.code
-        }, { status: 500 });
+    } catch (error: unknown) {
+        console.error('[DIAG] erro', { message: error instanceof Error ? error.message : String(error), code: (error as { code?: string })?.code });
+        return NextResponse.json({ status: 'error', error: 'Falha de conexão com o banco' }, { status: 500 });
     }
 }

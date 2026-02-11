@@ -1,4 +1,6 @@
-import { Pool } from 'pg';
+import { Pool, type PoolClient, type QueryResultRow } from 'pg';
+
+type QueryParams = readonly unknown[];
 
 let pool: Pool | null = null;
 
@@ -8,55 +10,56 @@ function getPool() {
     const connectionString = process.env.DATABASE_URL;
 
     if (!connectionString) {
-        console.error("FATAL: DATABASE_URL is missing in getPool()");
-        throw new Error("DATABASE_URL_MISSING");
+        throw new Error('DATABASE_URL_MISSING');
     }
-
-    console.log("Initializing Postgres Pool with URL:", connectionString.substring(0, 15) + "...");
 
     pool = new Pool({
         connectionString,
-        max: 5, // Reduzi para evitar esgotar conexões diretas
-        idleTimeoutMillis: 60000,
-        connectionTimeoutMillis: 30000, // Aumentei para 30 segundos
-        ssl: { rejectUnauthorized: false }
+        max: Number(process.env.DB_POOL_MAX ?? 10),
+        idleTimeoutMillis: Number(process.env.DB_IDLE_TIMEOUT_MS ?? 30000),
+        connectionTimeoutMillis: Number(process.env.DB_CONNECTION_TIMEOUT_MS ?? 10000),
+        ssl: process.env.DATABASE_SSL === 'false' ? false : { rejectUnauthorized: false },
+        allowExitOnIdle: true,
     });
 
     pool.on('error', (err) => {
-        console.error('Unexpected error on idle client', err);
-        pool = null; // Reset pool on fatal error
+        console.error('[DB] Unexpected idle client error', {
+            message: err.message,
+            code: err.code,
+        });
     });
 
     return pool;
 }
 
-export const db = {
-    async query(text: string, params?: any[]) {
-        try {
-            const start = Date.now();
-            const client = getPool();
-            const res = await client.query(text, params);
-            const duration = Date.now() - start;
+async function query<T extends QueryResultRow = QueryResultRow>(text: string, params?: QueryParams) {
+    const client = getPool();
+    const result = await client.query<T>(text, params as unknown[] | undefined);
+    return result;
+}
 
-            if (process.env.NODE_ENV !== 'production') {
-                console.log('Query executed', { duration, rows: res.rowCount });
-            }
-            return res;
-        } catch (error: any) {
-            console.error('Database query error:', {
-                message: error.message,
-                code: error.code,
-                text: text.substring(0, 50) + '...'
-            });
+export const db = {
+    query,
+    async fetchOne<T extends QueryResultRow = QueryResultRow>(text: string, params?: QueryParams) {
+        const res = await query<T>(text, params);
+        return res.rows[0] ?? null;
+    },
+    async fetchAll<T extends QueryResultRow = QueryResultRow>(text: string, params?: QueryParams) {
+        const res = await query<T>(text, params);
+        return res.rows;
+    },
+    async withTransaction<T>(callback: (client: PoolClient) => Promise<T>) {
+        const client = await getPool().connect();
+        try {
+            await client.query('BEGIN');
+            const result = await callback(client);
+            await client.query('COMMIT');
+            return result;
+        } catch (error) {
+            await client.query('ROLLBACK');
             throw error;
+        } finally {
+            client.release();
         }
     },
-    async fetchOne(text: string, params?: any[]) {
-        const res = await this.query(text, params);
-        return res.rows[0];
-    },
-    async fetchAll(text: string, params?: any[]) {
-        const res = await this.query(text, params);
-        return res.rows;
-    }
 };
