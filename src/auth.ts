@@ -27,28 +27,23 @@ export const { auth, signIn, signOut, handlers: { GET, POST } } = NextAuth({
                 if (parsedCredentials.success) {
                     const { email, password } = parsedCredentials.data;
                     try {
-                        // Log de tentativa no banco
-                        await db.query('INSERT INTO "DebugLog" (message) VALUES ($1)', [`Tentativa de login: ${email}`]);
+                        console.log('[AUTH] Tentativa de login para:', email);
 
                         const user = await db.fetchOne('SELECT * FROM "User" WHERE email = $1', [email]);
 
                         if (!user) {
-                            await db.query('INSERT INTO "DebugLog" (message) VALUES ($1)', [`Falha login: Usuário não encontrado - ${email}`]);
-                            console.error('[AUTH] Falha: Usuário não encontrado no banco:', email);
+                            console.error('[AUTH] Usuário não encontrado:', email);
                             return null;
                         }
 
                         const passwordsMatch = await compare(password, user.password);
 
                         if (!passwordsMatch) {
-                            await db.query('INSERT INTO "DebugLog" (message) VALUES ($1)', [`Falha login: Senha incorreta - ${email}`]);
-                            console.error('[AUTH] Falha: Senha incorreta para:', email);
+                            console.error('[AUTH] Senha incorreta para:', email);
                             return null;
                         }
 
-                        await db.query('INSERT INTO "DebugLog" (message) VALUES ($1)', [`Sucesso login: ${email}`]);
-                        console.log('[AUTH] Sucesso: Usuário autenticado:', email);
-
+                        console.log('[AUTH] Sucesso!');
                         return {
                             id: user.id,
                             name: user.name,
@@ -56,11 +51,10 @@ export const { auth, signIn, signOut, handlers: { GET, POST } } = NextAuth({
                             role: user.role,
                         };
                     } catch (dbError: any) {
-                        console.error('[AUTH] ERRO CRÍTICO no Banco de Dados:', dbError);
+                        console.error('[AUTH] ERRO DE BANCO:', dbError.message);
                         return null;
                     }
                 }
-
                 return null;
             },
         }),
