@@ -18,6 +18,15 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from '@/components/ui/dialog';
 
 interface Product {
     id: string;
@@ -42,6 +51,10 @@ export default function PDVPage() {
 
     const [cart, setCart] = useState<CartItem[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
+    const [invoiceCustomer, setInvoiceCustomer] = useState('Consumidor Final');
+    const [invoiceDocument, setInvoiceDocument] = useState('');
+    const [paymentMethod, setPaymentMethod] = useState<'DINHEIRO' | 'CARTAO' | 'PIX' | null>(null);
+    const [isInvoiceDialogOpen, setIsInvoiceDialogOpen] = useState(false);
 
     const addToCart = (product: Product) => {
         const existingItem = cart.find(item => item.id === product.id);
@@ -70,6 +83,36 @@ export default function PDVPage() {
     };
 
     const total = cart.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+
+    const handleSelectPayment = (method: 'DINHEIRO' | 'CARTAO' | 'PIX') => {
+        setPaymentMethod(method);
+        toast.success(`Pagamento selecionado: ${method}`);
+    };
+
+    const handleFinalizeSale = () => {
+        if (!paymentMethod) {
+            toast.error('Selecione uma forma de pagamento antes de finalizar a venda.');
+            return;
+        }
+
+        toast.success('Venda finalizada com sucesso.');
+    };
+
+    const handleIssueInvoice = () => {
+        if (cart.length === 0) {
+            toast.error('Adicione ao menos um produto para emitir NF-e.');
+            return;
+        }
+
+        if (!paymentMethod) {
+            toast.error('Selecione uma forma de pagamento para emissão da NF-e.');
+            return;
+        }
+
+        const invoiceNumber = `${new Date().getFullYear()}-${String(Math.floor(Math.random() * 99999)).padStart(5, '0')}`;
+        toast.success(`NF-e ${invoiceNumber} emitida para ${invoiceCustomer}.`);
+        setIsInvoiceDialogOpen(false);
+    };
 
     return (
         <div className="p-6 h-[calc(100vh-64px)] flex flex-col lg:flex-row gap-6">
@@ -173,21 +216,70 @@ export default function PDVPage() {
                         </div>
 
                         <div className="grid grid-cols-3 gap-2 w-full">
-                            <Button variant="outline" className="flex-col h-16 gap-1 rounded-xl">
+                            <Button
+                                variant={paymentMethod === 'DINHEIRO' ? 'default' : 'outline'}
+                                className="flex-col h-16 gap-1 rounded-xl"
+                                onClick={() => handleSelectPayment('DINHEIRO')}
+                            >
                                 <Banknote className="w-4 h-4" />
                                 <span className="text-[10px] font-bold">DINHEIRO</span>
                             </Button>
-                            <Button variant="outline" className="flex-col h-16 gap-1 rounded-xl">
+                            <Button
+                                variant={paymentMethod === 'CARTAO' ? 'default' : 'outline'}
+                                className="flex-col h-16 gap-1 rounded-xl"
+                                onClick={() => handleSelectPayment('CARTAO')}
+                            >
                                 <CreditCard className="w-4 h-4" />
                                 <span className="text-[10px] font-bold">CARTÃO</span>
                             </Button>
-                            <Button variant="outline" className="flex-col h-16 gap-1 rounded-xl">
+                            <Button
+                                variant={paymentMethod === 'PIX' ? 'default' : 'outline'}
+                                className="flex-col h-16 gap-1 rounded-xl"
+                                onClick={() => handleSelectPayment('PIX')}
+                            >
                                 <QrCode className="w-4 h-4" />
                                 <span className="text-[10px] font-bold">PIX</span>
                             </Button>
                         </div>
 
-                        <Button className="w-full h-12 rounded-xl text-base font-bold shadow-lg shadow-primary/20 gap-2" disabled={cart.length === 0}>
+                        <Dialog open={isInvoiceDialogOpen} onOpenChange={setIsInvoiceDialogOpen}>
+                            <DialogTrigger asChild>
+                                <Button variant="outline" className="w-full rounded-xl" disabled={cart.length === 0}>
+                                    Emitir NF-e de Produtos
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Emitir NF-e de Produtos</DialogTitle>
+                                    <DialogDescription>
+                                        Preencha os dados do destinatário para gerar a nota fiscal da venda atual.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <div className="space-y-3">
+                                    <Input
+                                        placeholder="Nome / Razão Social"
+                                        value={invoiceCustomer}
+                                        onChange={(e) => setInvoiceCustomer(e.target.value)}
+                                    />
+                                    <Input
+                                        placeholder="CPF/CNPJ (opcional)"
+                                        value={invoiceDocument}
+                                        onChange={(e) => setInvoiceDocument(e.target.value)}
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                        Forma de pagamento selecionada: <strong>{paymentMethod ?? 'Não selecionada'}</strong>
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                        Total da NF-e: <strong>R$ {total.toFixed(2)}</strong>
+                                    </p>
+                                </div>
+                                <DialogFooter>
+                                    <Button onClick={handleIssueInvoice}>Confirmar emissão</Button>
+                                </DialogFooter>
+                            </DialogContent>
+                        </Dialog>
+
+                        <Button className="w-full h-12 rounded-xl text-base font-bold shadow-lg shadow-primary/20 gap-2" disabled={cart.length === 0} onClick={handleFinalizeSale}>
                             <CheckCircle2 className="w-5 h-5" /> FINALIZAR VENDA
                         </Button>
                     </CardFooter>

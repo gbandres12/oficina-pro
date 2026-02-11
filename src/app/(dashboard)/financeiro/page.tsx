@@ -6,12 +6,10 @@ import {
     ArrowDownCircle,
     ArrowUpCircle,
     Wallet,
-    Filter,
     Download,
     Plus,
     PieChart as PieChartIcon,
     Search,
-    MoreVertical
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,7 +18,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { toast } from 'sonner';
 
 export default function FinanceiroPage() {
     const [selectedTab, setSelectedTab] = React.useState('all');
@@ -59,6 +58,18 @@ export default function FinanceiroPage() {
         return matchesTab && matchesDate;
     });
 
+    const handleExport = () => {
+        toast.success('Exportação iniciada. O arquivo será disponibilizado em instantes.');
+    };
+
+    const handleNewEntry = () => {
+        toast.info('Formulário de novo lançamento financeiro em desenvolvimento.');
+    };
+
+    const handleCostCenterDetails = () => {
+        toast.message('Detalhamento de centros de custos será liberado na próxima versão.');
+    };
+
     return (
         <div className="p-6 space-y-8 max-w-7xl mx-auto">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -84,10 +95,10 @@ export default function FinanceiroPage() {
                             Hoje
                         </Button>
                     </div>
-                    <Button variant="outline" className="gap-2 rounded-xl h-11 px-6 font-bold uppercase text-xs">
+                    <Button variant="outline" className="gap-2 rounded-xl h-11 px-6 font-bold uppercase text-xs" onClick={handleExport}>
                         <Download className="w-4 h-4" /> Exportar
                     </Button>
-                    <Button className="gap-2 rounded-xl bg-primary h-11 px-6 font-bold uppercase text-xs shadow-lg shadow-primary/20">
+                    <Button className="gap-2 rounded-xl bg-primary h-11 px-6 font-bold uppercase text-xs shadow-lg shadow-primary/20" onClick={handleNewEntry}>
                         <Plus className="w-4 h-4" /> Novo Lançamento
                     </Button>
                 </div>
@@ -145,7 +156,7 @@ export default function FinanceiroPage() {
                                     </div>
                                 </div>
                             ))}
-                            <Button variant="ghost" className="w-full text-xs font-bold text-primary hover:bg-primary/5 uppercase tracking-widest">
+                            <Button variant="ghost" className="w-full text-xs font-bold text-primary hover:bg-primary/5 uppercase tracking-widest" onClick={handleCostCenterDetails}>
                                 Detalhar Centros de Custos →
                             </Button>
                         </CardContent>
