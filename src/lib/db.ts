@@ -16,10 +16,10 @@ function getPool() {
 
     pool = new Pool({
         connectionString,
-        max: 10,
-        idleTimeoutMillis: 30000,
-        connectionTimeoutMillis: 10000,
-        ssl: connectionString.includes('supabase') ? { rejectUnauthorized: false } : false
+        max: 5, // Reduzi para evitar esgotar conexões diretas
+        idleTimeoutMillis: 60000,
+        connectionTimeoutMillis: 30000, // Aumentei para 30 segundos
+        ssl: { rejectUnauthorized: false }
     });
 
     pool.on('error', (err) => {
