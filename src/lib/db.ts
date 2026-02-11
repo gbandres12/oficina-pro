@@ -2,15 +2,37 @@ import { Pool } from 'pg';
 
 let pool: Pool | null = null;
 
+function resolveConnectionString() {
+    const candidates = [
+        process.env.DATABASE_URL,
+        process.env.POSTGRES_URL,
+        process.env.POSTGRES_PRISMA_URL,
+        process.env.SUPABASE_DB_URL,
+    ].filter(Boolean) as string[];
+
+    const connectionString = candidates[0];
+
+    if (!connectionString) {
+        console.error('FATAL: nenhuma URL de conexão PostgreSQL encontrada (DATABASE_URL/POSTGRES_URL/POSTGRES_PRISMA_URL/SUPABASE_DB_URL).');
+        throw new Error('DATABASE_URL_MISSING');
+    }
+
+    if (!/^postgres(ql)?:\/\//i.test(connectionString)) {
+        console.error('FATAL: URL de banco inválida. Parece que uma URL HTTP(S) foi configurada no lugar da string PostgreSQL.');
+        throw new Error('DATABASE_URL_INVALID');
+    }
+
+    if (connectionString.includes('.supabase.co:5432')) {
+        console.warn('Aviso: conexão direta Supabase (:5432) pode falhar em ambientes sem IPv6. Prefira a URL do Pooler (:6543).');
+    }
+
+    return connectionString;
+}
+
 function getPool() {
     if (pool) return pool;
 
-    const connectionString = process.env.DATABASE_URL;
-
-    if (!connectionString) {
-        console.error("FATAL: DATABASE_URL is missing in getPool()");
-        throw new Error("DATABASE_URL_MISSING");
-    }
+    const connectionString = resolveConnectionString();
 
     console.log("Initializing Postgres Pool with URL:", connectionString.substring(0, 15) + "...");
 
