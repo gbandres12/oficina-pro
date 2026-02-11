@@ -64,7 +64,7 @@ export default function PDVPage() {
         }
 
         const existingItem = cart.find(item => item.id === product.id);
-        if (existing Item) {
+        if (existingItem) {
             if (existingItem.quantity >= product.stock) {
                 toast.error('Quantidade em estoque insuficiente');
                 return;
