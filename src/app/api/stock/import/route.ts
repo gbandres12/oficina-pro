@@ -1,32 +1,49 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { z } from 'zod';
+
+const stockItemSchema = z.object({
+    name: z.string().min(2).max(160),
+    sku: z.string().min(1).max(80),
+    quantity: z.number().nonnegative().default(0),
+    minQuantity: z.number().nonnegative().default(5),
+    price: z.number().nonnegative().default(0),
+});
+
+const stockImportSchema = z.object({
+    items: z.array(stockItemSchema).min(1).max(1000),
+});
 
 export async function POST(request: Request) {
     try {
-        const { items } = await request.json();
+        const payload = await request.json();
+        const parsed = stockImportSchema.safeParse(payload);
 
-        if (!items || !Array.isArray(items)) {
-            return NextResponse.json({ error: 'Lista de itens inválida' }, { status: 400 });
+        if (!parsed.success) {
+            return NextResponse.json({ error: 'Lista de itens inválida', details: parsed.error.flatten() }, { status: 400 });
         }
 
-        const results = await Promise.all(
-            items.map(async (item: any) => {
-                const id = `inv_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-                return db.fetchOne(`
-                    INSERT INTO "InventoryItem" (id, name, sku, quantity, "minQuantity", "unitPrice", "updatedAt")
-                    VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
-                    ON CONFLICT (sku) DO UPDATE SET
+        const { items } = parsed.data;
+
+        await db.withTransaction(async (client) => {
+            for (const item of items) {
+                await client.query(
+                    `INSERT INTO "InventoryItem" (id, name, sku, quantity, "minQuantity", "unitPrice", "updatedAt")
+                     VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
+                     ON CONFLICT (sku) DO UPDATE SET
+                        name = EXCLUDED.name,
                         quantity = "InventoryItem".quantity + EXCLUDED.quantity,
                         "unitPrice" = EXCLUDED."unitPrice",
-                        "updatedAt" = CURRENT_TIMESTAMP
-                    RETURNING *
-                `, [id, item.name, item.sku, item.quantity || 0, item.minQuantity || 5, item.price || 0]);
-            })
-        );
+                        "minQuantity" = EXCLUDED."minQuantity",
+                        "updatedAt" = CURRENT_TIMESTAMP`,
+                    [crypto.randomUUID(), item.name.trim(), item.sku.trim(), item.quantity, item.minQuantity, item.price]
+                );
+            }
+        });
 
-        return NextResponse.json({ success: true, count: results.length });
-    } catch (error: any) {
-        console.error('Import error:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return NextResponse.json({ success: true, count: items.length });
+    } catch (error: unknown) {
+        console.error('[STOCK_IMPORT] erro', { message: error instanceof Error ? error.message : String(error), code: (error as { code?: string })?.code });
+        return NextResponse.json({ error: 'Erro interno na importação' }, { status: 500 });
     }
 }

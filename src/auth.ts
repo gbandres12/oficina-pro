@@ -27,31 +27,26 @@ export const { auth, signIn, signOut, handlers: { GET, POST } } = NextAuth({
                 if (parsedCredentials.success) {
                     const { email, password } = parsedCredentials.data;
                     try {
-                        console.log('[AUTH] Tentativa de login via SQL direto para:', email);
-
                         const user = await db.fetchOne('SELECT * FROM "User" WHERE email = $1', [email]);
 
                         if (!user) {
-                            console.error('[AUTH] Usuário não encontrado:', email);
                             return null;
                         }
 
                         const passwordsMatch = await compare(password, user.password);
 
                         if (!passwordsMatch) {
-                            console.error('[AUTH] Senha incorreta para:', email);
                             return null;
                         }
 
-                        console.log('[AUTH] Login bem-sucedido via SQL!');
                         return {
                             id: user.id,
                             name: user.name,
                             email: user.email,
                             role: user.role,
                         };
-                    } catch (err: any) {
-                        console.error('[AUTH] ERRO SQL:', err.message);
+                    } catch (err: unknown) {
+                        console.error('[AUTH] erro de autenticação', { message: err instanceof Error ? err.message : String(err), code: (err as { code?: string })?.code });
                         return null;
                     }
                 }
@@ -60,14 +55,14 @@ export const { auth, signIn, signOut, handlers: { GET, POST } } = NextAuth({
         }),
     ],
     callbacks: {
-        async session({ session, token }: any) {
+        async session({ session, token }) {
             if (token.sub && session.user) {
                 session.user.id = token.sub;
                 session.user.role = token.role;
             }
             return session;
         },
-        async jwt({ token, user }: any) {
+        async jwt({ token, user }) {
             if (user) {
                 token.role = user.role;
             }
