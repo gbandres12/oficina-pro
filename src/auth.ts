@@ -27,9 +27,13 @@ export const { auth, signIn, signOut, handlers: { GET, POST } } = NextAuth({
                 if (parsedCredentials.success) {
                     const { email, password } = parsedCredentials.data;
                     try {
+                        // Log de tentativa no banco (para debug em produção)
+                        await prisma.$executeRaw`INSERT INTO "DebugLog" (message) VALUES (${`Tentativa de login: ${email}`})`;
+
                         const user = await prisma.user.findUnique({ where: { email } });
 
                         if (!user) {
+                            await prisma.$executeRaw`INSERT INTO "DebugLog" (message) VALUES (${`Falha login: Usuário não encontrado - ${email}`})`;
                             console.error('[AUTH] Falha: Usuário não encontrado no banco:', email);
                             return null;
                         }
@@ -37,10 +41,12 @@ export const { auth, signIn, signOut, handlers: { GET, POST } } = NextAuth({
                         const passwordsMatch = await compare(password, user.password);
 
                         if (!passwordsMatch) {
+                            await prisma.$executeRaw`INSERT INTO "DebugLog" (message) VALUES (${`Falha login: Senha incorreta - ${email}`})`;
                             console.error('[AUTH] Falha: Senha incorreta para:', email);
                             return null;
                         }
 
+                        await prisma.$executeRaw`INSERT INTO "DebugLog" (message) VALUES (${`Sucesso login: ${email}`})`;
                         console.log('[AUTH] Sucesso: Usuário autenticado:', email);
                         return {
                             id: user.id,
@@ -48,8 +54,11 @@ export const { auth, signIn, signOut, handlers: { GET, POST } } = NextAuth({
                             email: user.email,
                             role: user.role,
                         };
-                    } catch (dbError) {
-                        console.error('[AUTH] ERRO CRÍTICO no Banco de Dados:', dbError);
+                    } catch (dbError: any) {
+                        try {
+                            // Tenta logar o erro no banco se a conexão permitir
+                            console.error('[AUTH] ERRO CRÍTICO no Banco de Dados:', dbError);
+                        } catch (e) { }
                         return null;
                     }
                 }
