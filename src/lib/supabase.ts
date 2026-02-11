@@ -14,9 +14,13 @@ console.log('Supabase Client Configured with Hardcoded URL:', supabaseUrl);
 
 // No servidor, usamos a Service Role Key para ter permissão de admin (ignorar RLS)
 const isServer = typeof window === 'undefined';
-const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SERVICE_ROLE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxwa2x1bmdtZHVna2Rxenp4YXVsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDUwMDY5NywiZXhwIjoyMDg2MDc2Njk3fQ.Q0zVpir35frTjZ2KuYljEUskdDz-tgTArqqD7RVvaW4';
 
-const supabaseKey = (isServer && serviceRoleKey) ? serviceRoleKey : supabaseAnonKey;
+// Forçando Service Role Key no servidor para garantir permissões
+const supabaseKey = isServer ? SERVICE_ROLE_KEY : supabaseAnonKey;
+
+console.log('Supabase usando chave:', isServer ? 'SERVICE_ROLE (Admin)' : 'ANON (Público)');
+
 
 export const supabase = createClient(supabaseUrl, supabaseKey, {
     auth: {
