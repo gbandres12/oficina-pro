@@ -1,14 +1,13 @@
 const { PrismaClient } = require('@prisma/client');
 const { PrismaPg } = require('@prisma/adapter-pg');
 const { Pool } = require('pg');
-const { hash } = require('bcrypt-ts');
 require('dotenv').config();
 
-const databaseUrl = process.env.DATABASE_URL || "";
+const databaseUrl = process.env.DATABASE_URL || '';
 
 function createPrismaClient() {
     if (!databaseUrl) {
-        throw new Error("DATABASE_URL não configurada no .env");
+        throw new Error('DATABASE_URL não configurada no .env');
     }
 
     const pool = new Pool({ connectionString: databaseUrl });
@@ -19,44 +18,28 @@ function createPrismaClient() {
 const prisma = createPrismaClient();
 
 async function main() {
-    console.log('Iniciando seed no Supabase...');
-    const adminPassword = await hash('admin123', 10);
-    const employeePassword = await hash('user123', 10);
+    console.log('Limpando banco para ambiente de testes...');
 
-    const admin = await prisma.user.upsert({
-        where: { email: 'admin@andres.com' },
-        update: {
-            password: adminPassword,
-        },
-        create: {
-            email: 'admin@andres.com',
-            name: 'Gabriel Andres',
-            password: adminPassword,
-            role: 'ADMIN',
-        },
-    });
+    await prisma.saleItem.deleteMany();
+    await prisma.sale.deleteMany();
+    await prisma.checklistItem.deleteMany();
+    await prisma.damagePoint.deleteMany();
+    await prisma.serviceItem.deleteMany();
+    await prisma.partItem.deleteMany();
+    await prisma.financialTransaction.deleteMany();
+    await prisma.serviceOrder.deleteMany();
+    await prisma.vehicle.deleteMany();
+    await prisma.client.deleteMany();
+    await prisma.inventoryItem.deleteMany();
+    await prisma.costCenter.deleteMany();
+    await prisma.user.deleteMany();
 
-    const checklistUser = await prisma.user.upsert({
-        where: { email: 'checklist@andres.com' },
-        update: {
-            password: employeePassword,
-        },
-        create: {
-            email: 'checklist@andres.com',
-            name: 'Pedro Checklist',
-            password: employeePassword,
-            role: 'EMPLOYEE',
-        },
-    });
-
-    console.log('Seed finalizado com sucesso!');
-    console.log('Admin:', admin.email);
-    console.log('Checklist:', checklistUser.email);
+    console.log('Banco limpo. Nenhum dado inicial foi inserido.');
 }
 
 main()
     .catch((e) => {
-        console.error('Erro no Seed:', e);
+        console.error('Erro no seed:', e);
         process.exit(1);
     })
     .finally(async () => {
