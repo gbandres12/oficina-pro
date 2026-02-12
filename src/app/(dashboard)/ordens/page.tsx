@@ -21,6 +21,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { CreateOrderDialog } from '@/components/orders/CreateOrderDialog';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 
 interface ServiceOrder {
@@ -42,6 +44,7 @@ export default function OrdensPage() {
     const [orders, setOrders] = useState<ServiceOrder[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [view, setView] = useState<'list' | 'kanban'>('list');
 
     const fetchOrders = async () => {
         setLoading(true);
@@ -109,9 +112,16 @@ export default function OrdensPage() {
                     <p className="text-muted-foreground">Gerencie todas as ordens de serviço da oficina</p>
                 </div>
                 <div className="flex gap-3">
-                    <Button variant="outline" className="gap-2 rounded-xl">
-                        <Kanban className="w-4 h-4" /> Visualizar Kanban
-                    </Button>
+                    <Tabs value={view} onValueChange={(v) => setView(v as 'list' | 'kanban')} className="w-auto">
+                        <TabsList className="h-11 rounded-xl">
+                            <TabsTrigger value="list" className="rounded-lg gap-2">
+                                <ClipboardList className="w-4 h-4" /> Lista
+                            </TabsTrigger>
+                            <TabsTrigger value="kanban" className="rounded-lg gap-2">
+                                <Kanban className="w-4 h-4" /> Kanban
+                            </TabsTrigger>
+                        </TabsList>
+                    </Tabs>
                     <Button className="gap-2 rounded-xl bg-primary shadow-lg shadow-primary/20" onClick={() => setIsCreateDialogOpen(true)}>
                         <Plus className="w-4 h-4" /> Abrir Nova O.S.
                     </Button>
@@ -191,85 +201,175 @@ export default function OrdensPage() {
                 </CardContent>
             </Card>
 
-            {/* Orders List */}
-            <div className="space-y-3">
-                {loading ? (
-                    <Card className="border-none shadow-md">
-                        <CardContent className="p-12">
-                            <div className="flex flex-col items-center justify-center gap-4 text-muted-foreground">
+            {/* Orders List/Kanban */}
+            {view === 'list' ? (
+                <div className="space-y-3">
+                    {loading ? (
+                        <Card className="border-none shadow-md">
+                            <CardContent className="p-12">
+                                <div className="flex flex-col items-center justify-center gap-4 text-muted-foreground">
+                                    <Loader2 className="w-8 h-8 animate-spin" />
+                                    <p>Carregando ordens de serviço...</p>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ) : filteredOrders.length === 0 ? (
+                        <Card className="border-none shadow-md">
+                            <CardContent className="p-12">
+                                <div className="flex flex-col items-center justify-center gap-4 text-muted-foreground">
+                                    <ClipboardList className="w-12 h-12" />
+                                    <div className="text-center">
+                                        <p className="font-semibold text-lg">Nenhuma ordem de serviço encontrada</p>
+                                        <p className="text-sm">Crie sua primeira ordem de serviço clicando no botão acima</p>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ) : (
+                        filteredOrders.map((order) => {
+                            const statusConfig = getStatusConfig(order.status);
+                            return (
+                                <Card key={order.id} className="border-none shadow-md hover:shadow-lg transition-shadow">
+                                    <CardContent className="p-6">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-6 flex-1">
+                                                <div className="text-center">
+                                                    <div className="text-xs text-muted-foreground mb-1">O.S.</div>
+                                                    <div className="font-bold text-lg">{order.number}</div>
+                                                </div>
+                                                <div className="h-12 w-px bg-border" />
+                                                <div className="flex-1 grid grid-cols-4 gap-6">
+                                                    <div>
+                                                        <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                                                            <User className="w-3 h-3" /> Cliente
+                                                        </div>
+                                                        <div className="font-medium">{order.clientName}</div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                                                            <Car className="w-3 h-3" /> Veículo
+                                                        </div>
+                                                        <div className="font-medium">{order.vehicleBrand} {order.vehicleModel}</div>
+                                                        <div className="text-xs text-muted-foreground">{order.vehiclePlate}</div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                                                            <Wrench className="w-3 h-3" /> Técnico
+                                                        </div>
+                                                        <div className="font-medium">{order.mechanic || '-'}</div>
+                                                    </div>
+                                                    <div>
+                                                        <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                                                            <Calendar className="w-3 h-3" /> Data
+                                                        </div>
+                                                        <div className="font-medium">{formatDate(order.entryDate)}</div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-3">
+                                                <Badge variant={statusConfig.variant} className={statusConfig.className}>
+                                                    {statusConfig.label}
+                                                </Badge>
+                                                <Button variant="ghost" size="icon" className="rounded-xl">
+                                                    <MoreVertical className="w-4 h-4" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            );
+                        })
+                    )}
+                </div>
+            ) : (
+                /* Kanban View */
+                <Card className="border-none shadow-md">
+                    <CardContent className="p-6">
+                        {loading ? (
+                            <div className="flex flex-col items-center justify-center gap-4 text-muted-foreground py-12">
                                 <Loader2 className="w-8 h-8 animate-spin" />
                                 <p>Carregando ordens de serviço...</p>
                             </div>
-                        </CardContent>
-                    </Card>
-                ) : filteredOrders.length === 0 ? (
-                    <Card className="border-none shadow-md">
-                        <CardContent className="p-12">
-                            <div className="flex flex-col items-center justify-center gap-4 text-muted-foreground">
-                                <ClipboardList className="w-12 h-12" />
-                                <div className="text-center">
-                                    <p className="font-semibold text-lg">Nenhuma ordem de serviço encontrada</p>
-                                    <p className="text-sm">Crie sua primeira ordem de serviço clicando no botão acima</p>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <div className="flex gap-4 min-w-max pb-4">
+                                    {[
+                                        { id: 'OPEN', title: 'Abertas', statuses: ['OPEN'], color: 'bg-slate-100' },
+                                        { id: 'QUOTATION', title: 'Orçamento', statuses: ['QUOTATION'], color: 'bg-purple-100' },
+                                        { id: 'APPROVED', title: 'Aprovadas', statuses: ['APPROVED'], color: 'bg-green-100' },
+                                        { id: 'IN_PROGRESS', title: 'Em Execução', statuses: ['IN_PROGRESS'], color: 'bg-blue-100' },
+                                        { id: 'WAITING_PARTS', title: 'Aguardando Peças', statuses: ['WAITING_PARTS'], color: 'bg-amber-100' },
+                                        { id: 'FINISHED', title: 'Finalizadas', statuses: ['FINISHED'], color: 'bg-emerald-100' },
+                                    ].map((column) => {
+                                        const columnOrders = filteredOrders.filter(o => column.statuses.includes(o.status));
+                                        return (
+                                            <div key={column.id} className="flex-shrink-0 w-[320px]">
+                                                <div className={`${column.color} dark:bg-slate-800 rounded-xl p-4`}>
+                                                    <div className="flex items-center justify-between mb-4">
+                                                        <h3 className="font-bold text-sm uppercase tracking-wide">{column.title}</h3>
+                                                        <Badge variant="secondary" className="rounded-full">
+                                                            {columnOrders.length}
+                                                        </Badge>
+                                                    </div>
+                                                    <div className="space-y-3 max-h-[600px] overflow-y-auto">
+                                                        {columnOrders.map((order) => {
+                                                            const statusConfig = getStatusConfig(order.status);
+                                                            return (
+                                                                <Card key={order.id} className="hover:shadow-md transition-shadow cursor-move bg-white dark:bg-slate-900">
+                                                                    <CardContent className="p-4">
+                                                                        <div className="flex items-center gap-2 mb-3">
+                                                                            <Badge className="text-[9px] font-bold">#{order.number}</Badge>
+                                                                            <Badge variant={statusConfig.variant} className={`${statusConfig.className} text-[9px]`}>
+                                                                                {statusConfig.label}
+                                                                            </Badge>
+                                                                        </div>
+                                                                        <div className="space-y-2">
+                                                                            <div>
+                                                                                <div className="text-xs text-muted-foreground flex items-center gap-1">
+                                                                                    <User className="w-3 h-3" /> Cliente
+                                                                                </div>
+                                                                                <div className="font-semibold text-sm">{order.clientName}</div>
+                                                                                <div className="text-xs text-muted-foreground">{order.clientPhone}</div>
+                                                                            </div>
+                                                                            <div>
+                                                                                <div className="text-xs text-muted-foreground flex items-center gap-1">
+                                                                                    <Car className="w-3 h-3" /> Veículo
+                                                                                </div>
+                                                                                <div className="font-semibold text-sm">{order.vehicleBrand} {order.vehicleModel}</div>
+                                                                                <div className="text-xs text-muted-foreground">{order.vehiclePlate}</div>
+                                                                            </div>
+                                                                            <div>
+                                                                                <div className="text-xs text-muted-foreground flex items-center gap-1">
+                                                                                    <Wrench className="w-3 h-3" /> Técnico
+                                                                                </div>
+                                                                                <div className="font-medium text-sm">{order.mechanic || 'Não atribuído'}</div>
+                                                                            </div>
+                                                                            <div className="pt-2 border-t">
+                                                                                <div className="text-xs text-muted-foreground flex items-center gap-1 mb-1">
+                                                                                    <Calendar className="w-3 h-3" /> {formatDate(order.entryDate)}
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </CardContent>
+                                                                </Card>
+                                                            );
+                                                        })}
+                                                        {columnOrders.length === 0 && (
+                                                            <div className="text-center text-muted-foreground text-sm py-8">
+                                                                Nenhuma ordem
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </div>
-                        </CardContent>
-                    </Card>
-                ) : (
-                    filteredOrders.map((order) => {
-                        const statusConfig = getStatusConfig(order.status);
-                        return (
-                            <Card key={order.id} className="border-none shadow-md hover:shadow-lg transition-shadow">
-                                <CardContent className="p-6">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-6 flex-1">
-                                            <div className="text-center">
-                                                <div className="text-xs text-muted-foreground mb-1">O.S.</div>
-                                                <div className="font-bold text-lg">{order.number}</div>
-                                            </div>
-                                            <div className="h-12 w-px bg-border" />
-                                            <div className="flex-1 grid grid-cols-4 gap-6">
-                                                <div>
-                                                    <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                                                        <User className="w-3 h-3" /> Cliente
-                                                    </div>
-                                                    <div className="font-medium">{order.clientName}</div>
-                                                </div>
-                                                <div>
-                                                    <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                                                        <Car className="w-3 h-3" /> Veículo
-                                                    </div>
-                                                    <div className="font-medium">{order.vehicleBrand} {order.vehicleModel}</div>
-                                                    <div className="text-xs text-muted-foreground">{order.vehiclePlate}</div>
-                                                </div>
-                                                <div>
-                                                    <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                                                        <Wrench className="w-3 h-3" /> Técnico
-                                                    </div>
-                                                    <div className="font-medium">{order.mechanic || '-'}</div>
-                                                </div>
-                                                <div>
-                                                    <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
-                                                        <Calendar className="w-3 h-3" /> Data
-                                                    </div>
-                                                    <div className="font-medium">{formatDate(order.entryDate)}</div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-3">
-                                            <Badge variant={statusConfig.variant} className={statusConfig.className}>
-                                                {statusConfig.label}
-                                            </Badge>
-                                            <Button variant="ghost" size="icon" className="rounded-xl">
-                                                <MoreVertical className="w-4 h-4" />
-                                            </Button>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        );
-                    })
-                )}
-            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
 
             <CreateOrderDialog
                 open={isCreateDialogOpen}

@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
                 v.model as "vehicleModel",
                 v.brand as "vehicleBrand",
                 CASE 
-                    WHEN so.status = 'COMPLETED' OR so.status = 'DELIVERED' THEN 100
+                    WHEN so.status = 'FINISHED' THEN 100
                     WHEN so.status = 'IN_PROGRESS' THEN 50
                     WHEN so.status = 'APPROVED' THEN 25
                     WHEN so.status = 'WAITING_PARTS' THEN 15
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
                 CASE 
                     WHEN so.status = 'WAITING_PARTS' THEN 'MISSING'
                     WHEN so.status = 'IN_PROGRESS' THEN 'OK'
-                    WHEN so.status = 'COMPLETED' THEN 'OK'
+                    WHEN so.status = 'FINISHED' THEN 'OK'
                     ELSE 'ANALYZING'
                 END as "partsStatus"
             FROM "ServiceOrder" so
