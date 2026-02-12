@@ -23,10 +23,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { motion, AnimatePresence } from 'framer-motion';
 import { signOut, useSession } from 'next-auth/react';
+import { CreateOrderDialog } from '@/components/orders/CreateOrderDialog';
+import { toast } from 'sonner';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const { data: session } = useSession();
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+    const [isCreateOrderOpen, setIsCreateOrderOpen] = useState(false);
     const pathname = usePathname();
 
     const menuItems = [
@@ -133,7 +136,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     </div>
 
                     <div className="flex items-center gap-3">
-                        <Button variant="outline" size="sm" className="hidden sm:flex gap-2 rounded-full border-primary/20 text-primary">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="hidden sm:flex gap-2 rounded-full border-primary/20 text-primary hover:bg-primary hover:text-white transition-all shadow-sm"
+                            onClick={() => setIsCreateOrderOpen(true)}
+                        >
                             <Plus className="w-4 h-4" /> Nova O.S.
                         </Button>
                         <Button variant="ghost" size="icon" className="relative">
@@ -152,6 +160,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <div className="flex-1 overflow-y-auto bg-slate-50 dark:bg-slate-950">
                     {children}
                 </div>
+
+                <CreateOrderDialog
+                    open={isCreateOrderOpen}
+                    onOpenChange={setIsCreateOrderOpen}
+                    onSuccess={() => {
+                        // O sucesso pode ser tratado globalmente ou específico por página se necessário via contexto
+                        // Por enquanto, apenas o toast padrão do componente já ajuda
+                    }}
+                />
             </main>
         </div>
     );

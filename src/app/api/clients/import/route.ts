@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
+import { db } from '@/lib/db';
 import Papa from 'papaparse';
-
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-});
 
 export async function POST(request: NextRequest) {
     let client;
@@ -40,7 +36,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        client = await pool.connect();
+        client = await db.getClient();
         await client.query('BEGIN');
 
         let imported = 0;

@@ -37,6 +37,21 @@ interface Transaction {
     soNumber?: number;
 }
 
+import {
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    ResponsiveContainer,
+    Cell,
+    LineChart,
+    Line,
+    AreaChart,
+    Area
+} from 'recharts';
+
 export default function FinanceiroPage() {
     const [selectedTab, setSelectedTab] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
@@ -149,6 +164,40 @@ export default function FinanceiroPage() {
         return new Date(dateString).toLocaleDateString('pt-BR');
     };
 
+    const getChartData = () => {
+        const last7Days = [...Array(7)].map((_, i) => {
+            const d = new Date();
+            d.setDate(d.getDate() - (6 - i));
+            return d.toISOString().split('T')[0];
+        });
+
+        return last7Days.map(date => {
+            const dayTransactions = transactions.filter(t => t.date.startsWith(date));
+            const income = dayTransactions
+                .filter(t => t.type === 'INCOME' && t.status === 'PAID')
+                .reduce((acc, t) => acc + Number(t.amount), 0);
+            const expense = dayTransactions
+                .filter(t => t.type === 'EXPENSE' && t.status === 'PAID')
+                .reduce((acc, t) => acc + Number(t.amount), 0);
+
+            return {
+                name: new Date(date).toLocaleDateString('pt-BR', { weekday: 'short' }),
+                income,
+                expense
+            };
+        });
+    };
+
+    const getDataHealth = () => {
+        const total = transactions.length;
+        if (total === 0) return 100;
+        const incomplete = transactions.filter(t => !t.category && !t.costCenterName).length;
+        return ((total - incomplete) / total) * 100;
+    };
+
+    const chartData = getChartData();
+    const dataHealth = getDataHealth();
+
     return (
         <div className="p-6 space-y-8 max-w-7xl mx-auto">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -166,22 +215,110 @@ export default function FinanceiroPage() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                {stats.map((stat) => (
-                    <Card key={stat.label} className="border-none shadow-xl shadow-slate-200/50 dark:shadow-none dark:border transition-all hover:scale-[1.02]">
-                        <CardContent className="p-6">
-                            <div className="flex justify-between items-start">
-                                <div className={`p-3 rounded-2xl ${stat.bg} ${stat.color}`}>
-                                    <stat.icon className="w-6 h-6" />
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {stats.map((stat) => (
+                        <Card key={stat.label} className="border-none shadow-xl bg-white dark:bg-slate-900 overflow-hidden group">
+                            <CardContent className="p-6">
+                                <div className="flex justify-between items-start">
+                                    <div className={`p-3 rounded-2xl ${stat.bg} ${stat.color}`}>
+                                        <stat.icon className="w-5 h-5" />
+                                    </div>
+                                    <div className="text-right">
+                                        <div className="text-xl font-black">{stat.value}</div>
+                                        <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">{stat.label}</div>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+
+                <Card className="lg:col-span-2 border-none shadow-xl bg-white dark:bg-slate-900 overflow-hidden">
+                    <CardContent className="p-6 h-full flex flex-col">
+                        <div className="flex justify-between items-center mb-4">
+                            <div>
+                                <h3 className="text-sm font-black uppercase tracking-widest text-slate-400">Fluxo Semanal</h3>
+                                <p className="text-xs text-muted-foreground">Entradas vs Saídas (Pagos)</p>
+                            </div>
+                            <div className="flex gap-4">
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                                    <span className="text-[10px] font-bold uppercase">Entradas</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-2 h-2 rounded-full bg-red-500" />
+                                    <span className="text-[10px] font-bold uppercase">Saídas</span>
                                 </div>
                             </div>
-                            <div className="mt-4">
-                                <div className="text-2xl font-black">{stat.value}</div>
-                                <div className="text-sm font-bold text-muted-foreground uppercase tracking-widest text-[10px] mt-1">{stat.label}</div>
+                        </div>
+                        <div className="flex-1 min-h-[120px]">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <AreaChart data={chartData}>
+                                    <defs>
+                                        <linearGradient id="colorIncome" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.1} />
+                                            <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                        </linearGradient>
+                                        <linearGradient id="colorExpense" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="5%" stopColor="#ef4444" stopOpacity={0.1} />
+                                            <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+                                        </linearGradient>
+                                    </defs>
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                    <XAxis dataKey="name" hide />
+                                    <Tooltip
+                                        contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)' }}
+                                    />
+                                    <Area type="monotone" dataKey="income" stroke="#10b981" strokeWidth={2} fillOpacity={1} fill="url(#colorIncome)" />
+                                    <Area type="monotone" dataKey="expense" stroke="#ef4444" strokeWidth={2} fillOpacity={1} fill="url(#colorExpense)" />
+                                </AreaChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <Card className="md:col-span-2 border-none shadow-md bg-slate-900 text-white overflow-hidden relative">
+                    <div className="absolute top-0 right-0 p-8 opacity-10">
+                        <PieChartIcon className="w-32 h-32" />
+                    </div>
+                    <CardContent className="p-8 relative z-10 flex flex-col md:flex-row items-center gap-8">
+                        <div className="flex-1 space-y-4 text-center md:text-left">
+                            <div>
+                                <h2 className="text-2xl font-black uppercase tracking-tight">Qualidade dos Dados</h2>
+                                <p className="text-slate-400 font-medium">Transações com Categoria e Centro de Custo atribuídos.</p>
                             </div>
-                        </CardContent>
-                    </Card>
-                ))}
+                            <div className="space-y-2">
+                                <div className="flex justify-between text-xs font-black uppercase tracking-widest">
+                                    <span>Alimentação do Sistema</span>
+                                    <span className={dataHealth > 80 ? 'text-emerald-400' : 'text-amber-400'}>{dataHealth.toFixed(1)}%</span>
+                                </div>
+                                <Progress value={dataHealth} className="h-3 bg-white/10" />
+                            </div>
+                        </div>
+                        <div className="text-center p-6 bg-white/5 rounded-3xl backdrop-blur-sm border border-white/10">
+                            <div className="text-4xl font-black">{transactions.filter(t => !t.category).length}</div>
+                            <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">Pendentes de<br />Classificação</div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card className="border-none shadow-md bg-white dark:bg-slate-900 p-6 flex flex-col justify-center">
+                    <div className="flex items-center gap-4 mb-4">
+                        <div className="p-3 rounded-2xl bg-amber-50 text-amber-600">
+                            <AlertTriangle className="w-6 h-6" />
+                        </div>
+                        <div>
+                            <div className="text-sm font-black uppercase tracking-widest text-slate-400">Risco de Inadimplência</div>
+                            <div className="text-2xl font-black text-slate-900 dark:text-white">R$ {statsData.totalOverdue.toLocaleString('pt-BR')}</div>
+                        </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                        Você possui <strong>{transactions.filter(t => isOverdue(t)).length}</strong> títulos vencidos que precisam de atenção imediata para manter a saúde do caixa.
+                    </p>
+                </Card>
             </div>
 
             <Tabs defaultValue="all" className="w-full" onValueChange={setSelectedTab}>

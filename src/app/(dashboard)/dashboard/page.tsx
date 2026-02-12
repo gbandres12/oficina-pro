@@ -26,6 +26,38 @@ export default function DashboardPage() {
     const router = useRouter();
     const [view, setView] = React.useState<'dashboard' | 'checklist'>('dashboard');
     const [isCreateOrderOpen, setIsCreateOrderOpen] = React.useState(false);
+    const [loading, setLoading] = React.useState(true);
+    const [stats, setStats] = React.useState({
+        carsInShop: 0,
+        monthlyRevenue: 0,
+        pendingOrders: 0,
+        stockAlerts: 0,
+        waitingParts: 0
+    });
+    const [activeOrders, setActiveOrders] = React.useState<any[]>([]);
+    const [nextAppointments, setNextAppointments] = React.useState<any[]>([]);
+
+    const fetchData = async () => {
+        setLoading(true);
+        try {
+            const response = await fetch('/api/dashboard/stats');
+            const data = await response.json();
+            if (data.success) {
+                setStats(data.stats);
+                setActiveOrders(data.activeOrders);
+                setNextAppointments(data.nextAppointments || []);
+            }
+        } catch (error) {
+            console.error('Error fetching dashboard data:', error);
+            toast.error('Erro ao carregar dados do dashboard');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    React.useEffect(() => {
+        fetchData();
+    }, []);
 
     if (view === 'checklist') {
         return (
@@ -64,9 +96,9 @@ export default function DashboardPage() {
                             <div className="p-3 rounded-xl bg-blue-50 text-blue-600">
                                 <Car className="w-5 h-5" />
                             </div>
-                            <Badge variant="outline" className="text-emerald-600 border-emerald-200 bg-emerald-50">+12%</Badge>
+                            <Badge variant="outline" className="text-blue-600 border-blue-200 bg-blue-50">Ativos</Badge>
                         </div>
-                        <div className="text-2xl font-bold mb-1">12</div>
+                        <div className="text-2xl font-bold mb-1">{loading ? '...' : stats.carsInShop}</div>
                         <div className="text-sm text-muted-foreground">Carros na Oficina</div>
                     </CardContent>
                 </Card>
@@ -77,10 +109,12 @@ export default function DashboardPage() {
                             <div className="p-3 rounded-xl bg-emerald-50 text-emerald-600">
                                 <DollarSign className="w-5 h-5" />
                             </div>
-                            <Badge variant="outline" className="text-emerald-600 border-emerald-200 bg-emerald-50">+8%</Badge>
+                            <Badge variant="outline" className="text-emerald-600 border-emerald-200 bg-emerald-50">Mensal</Badge>
                         </div>
-                        <div className="text-2xl font-bold mb-1">R$ 45.200</div>
-                        <div className="text-sm text-muted-foreground">Faturamento do Mês</div>
+                        <div className="text-2xl font-bold mb-1">
+                            {loading ? '...' : `R$ ${Number(stats.monthlyRevenue).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                        </div>
+                        <div className="text-sm text-muted-foreground">Faturamento Estimado</div>
                     </CardContent>
                 </Card>
 
@@ -90,10 +124,10 @@ export default function DashboardPage() {
                             <div className="p-3 rounded-xl bg-amber-50 text-amber-600">
                                 <Clock className="w-5 h-5" />
                             </div>
-                            <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50">7 O.S.</Badge>
+                            <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50">Pendente</Badge>
                         </div>
-                        <div className="text-2xl font-bold mb-1">7</div>
-                        <div className="text-sm text-muted-foreground">Ordens Pendentes</div>
+                        <div className="text-2xl font-bold mb-1">{loading ? '...' : stats.pendingOrders}</div>
+                        <div className="text-sm text-muted-foreground">Novas Solicitações</div>
                     </CardContent>
                 </Card>
 
@@ -103,10 +137,10 @@ export default function DashboardPage() {
                             <div className="p-3 rounded-xl bg-red-50 text-red-600">
                                 <AlertTriangle className="w-5 h-5" />
                             </div>
-                            <Badge variant="outline" className="text-red-600 border-red-200 bg-red-50">Urgente</Badge>
+                            <Badge variant="outline" className="text-red-600 border-red-200 bg-red-50">Estoque</Badge>
                         </div>
-                        <div className="text-2xl font-bold mb-1">3</div>
-                        <div className="text-sm text-muted-foreground">Alertas de Estoque</div>
+                        <div className="text-2xl font-bold mb-1">{loading ? '...' : stats.stockAlerts}</div>
+                        <div className="text-sm text-muted-foreground">Itens Críticos</div>
                     </CardContent>
                 </Card>
             </div>
@@ -122,7 +156,9 @@ export default function DashboardPage() {
                                 </div>
                                 <div>
                                     <div className="font-bold text-lg mb-1">Atenção ao Pátio</div>
-                                    <div className="text-sm text-amber-50">4 veículos aguardando peças externas</div>
+                                    <div className="text-sm text-amber-50">
+                                        {loading ? '...' : stats.waitingParts} veículos aguardando peças
+                                    </div>
                                 </div>
                             </div>
                             <Button
@@ -145,7 +181,9 @@ export default function DashboardPage() {
                                 </div>
                                 <div>
                                     <div className="font-bold text-lg mb-1">Resumo Financeiro</div>
-                                    <div className="text-sm text-blue-50">R$ 32.400 de lucro líquido este mês</div>
+                                    <div className="text-sm text-blue-50">
+                                        {loading ? '...' : `R$ ${Number(stats.monthlyRevenue).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`} (Faturamento)
+                                    </div>
                                 </div>
                             </div>
                             <Button
@@ -182,55 +220,54 @@ export default function DashboardPage() {
                     </CardHeader>
                     <CardContent className="pt-6">
                         <div className="space-y-3">
-                            {[
-                                { plate: 'BRA-2E19', model: 'Honda Civic G10', customer: 'João Silva', status: 'IN_PROGRESS', progress: 75, parts: 'OK' },
-                                { plate: 'KLA-4455', model: 'Toyota Corolla Hybrid', customer: 'Maria Santos', status: 'WAITING_PARTS', progress: 15, parts: 'FALTANDO' },
-                                { plate: 'OJH-9088', model: 'VW Golf GTI', customer: 'Pedro Costa', status: 'APPROVED', progress: 5, parts: 'PEDIDO' },
-                            ].map((order) => (
-                                <div
-                                    key={order.plate}
-                                    className="flex items-center justify-between p-4 rounded-xl border bg-slate-50/50 dark:bg-slate-900/50 hover:bg-white dark:hover:bg-slate-900 transition-all hover:shadow-md cursor-pointer"
-                                >
-                                    <div className="flex items-center gap-4">
-                                        <div className="flex flex-col items-center justify-center w-14 h-10 border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-lg">
-                                            <div className="w-full bg-blue-600 h-1 rounded-t" />
-                                            <span className="text-xs font-bold mt-1">{order.plate}</span>
+                            {loading ? (
+                                <div className="text-center py-10 text-muted-foreground">Carregando operações...</div>
+                            ) : activeOrders.length === 0 ? (
+                                <div className="text-center py-10 text-muted-foreground">Nenhuma ordem de serviço ativa no momento.</div>
+                            ) : (
+                                activeOrders.map((order) => (
+                                    <div
+                                        key={order.id}
+                                        className="flex items-center justify-between p-4 rounded-xl border bg-slate-50/50 dark:bg-slate-900/50 hover:bg-white dark:hover:bg-slate-900 transition-all hover:shadow-md cursor-pointer"
+                                        onClick={() => router.push(`/ordens`)}
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className="flex flex-col items-center justify-center w-14 h-10 border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 rounded-lg">
+                                                <div className="w-full bg-blue-600 h-1 rounded-t" />
+                                                <span className="text-[10px] font-bold mt-1 uppercase">{order.vehiclePlate}</span>
+                                            </div>
+                                            <div>
+                                                <div className="font-bold text-slate-900 dark:text-white">{order.vehicleBrand} {order.vehicleModel}</div>
+                                                <div className="text-xs text-muted-foreground">{order.customerName}</div>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <div className="font-bold text-slate-900 dark:text-white">{order.model}</div>
-                                            <div className="text-xs text-muted-foreground">{order.customer}</div>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-4">
-                                        <div className="hidden md:flex items-center gap-2">
-                                            <span className="text-xs text-muted-foreground">Peças:</span>
+                                        <div className="flex items-center gap-4">
+                                            <div className="hidden md:flex items-center gap-2">
+                                                <span className="text-xs text-muted-foreground">Peças:</span>
+                                                <Badge
+                                                    variant="outline"
+                                                    className={`text-xs ${Number(order.missingParts) === 0
+                                                        ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
+                                                        : 'bg-red-50 text-red-600 border-red-200'
+                                                        }`}
+                                                >
+                                                    {Number(order.missingParts) === 0 ? 'OK' : 'PENDENTE'}
+                                                </Badge>
+                                            </div>
                                             <Badge
-                                                variant="outline"
-                                                className={`text-xs ${order.parts === 'OK'
-                                                    ? 'bg-emerald-50 text-emerald-600 border-emerald-200'
-                                                    : 'bg-red-50 text-red-600 border-red-200'
+                                                className={`text-xs ${order.status === 'IN_PROGRESS' ? 'bg-blue-600' :
+                                                    order.status === 'WAITING_PARTS' ? 'bg-amber-500' :
+                                                        'bg-emerald-600'
                                                     }`}
                                             >
-                                                {order.parts}
+                                                {order.status === 'IN_PROGRESS' ? 'EM EXECUÇÃO' :
+                                                    order.status === 'WAITING_PARTS' ? 'AG. PEÇAS' :
+                                                        order.status === 'APPROVED' ? 'APROVADO' : order.status}
                                             </Badge>
                                         </div>
-                                        <div className="hidden lg:block w-24 h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
-                                            <div
-                                                className="h-full bg-primary transition-all"
-                                                style={{ width: `${order.progress}%` }}
-                                            />
-                                        </div>
-                                        <Badge
-                                            className={`text-xs ${order.status === 'IN_PROGRESS' ? 'bg-blue-600' :
-                                                order.status === 'WAITING_PARTS' ? 'bg-amber-500' :
-                                                    'bg-emerald-600'
-                                                }`}
-                                        >
-                                            {order.progress}%
-                                        </Badge>
                                     </div>
-                                </div>
-                            ))}
+                                ))
+                            )}
                         </div>
                     </CardContent>
                 </Card>
@@ -243,21 +280,30 @@ export default function DashboardPage() {
                             <CardTitle className="text-lg font-bold">Próximos Agendamentos</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
-                            {[
-                                { date: '10', month: 'FEV', service: 'Revisão de 50.000km', vehicle: 'Corolla', customer: 'Pedro H.' },
-                                { date: '12', month: 'FEV', service: 'Troca de óleo', vehicle: 'Civic', customer: 'Ana M.' },
-                            ].map((item, i) => (
-                                <div key={i} className="flex gap-3 items-start">
-                                    <div className="bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-center min-w-[50px]">
-                                        <div className="text-xs font-bold text-muted-foreground">{item.month}</div>
-                                        <div className="text-lg font-black leading-none">{item.date}</div>
-                                    </div>
-                                    <div className="flex-1">
-                                        <div className="text-sm font-bold mb-1">{item.service}</div>
-                                        <div className="text-xs text-muted-foreground">{item.vehicle} • {item.customer}</div>
-                                    </div>
-                                </div>
-                            ))}
+                            {loading ? (
+                                <div className="text-center text-muted-foreground py-4">Carregando...</div>
+                            ) : nextAppointments.length === 0 ? (
+                                <div className="text-center text-muted-foreground py-4">Nenhum agendamento próximo</div>
+                            ) : (
+                                nextAppointments.map((item, i) => {
+                                    const date = new Date(item.entryDate);
+                                    const day = date.getDate();
+                                    const month = date.toLocaleString('pt-BR', { month: 'short' }).toUpperCase().replace('.', '');
+
+                                    return (
+                                        <div key={i} className="flex gap-3 items-start">
+                                            <div className="bg-slate-100 dark:bg-slate-800 p-2 rounded-lg text-center min-w-[50px]">
+                                                <div className="text-xs font-bold text-muted-foreground">{month}</div>
+                                                <div className="text-lg font-black leading-none">{day}</div>
+                                            </div>
+                                            <div className="flex-1">
+                                                <div className="text-sm font-bold mb-1">{item.serviceType || 'Revisão'}</div>
+                                                <div className="text-xs text-muted-foreground">{item.vehicleModel} • {item.customerName}</div>
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            )}
                         </CardContent>
                     </Card>
 
@@ -293,6 +339,7 @@ export default function DashboardPage() {
                 onOpenChange={setIsCreateOrderOpen}
                 onSuccess={() => {
                     toast.success('Ordem de serviço criada com sucesso!');
+                    fetchData(); // Refresh data
                 }}
             />
         </div>

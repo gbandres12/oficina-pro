@@ -1,18 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
-
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-});
+import { db } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
-    let client;
-
     try {
-        client = await pool.connect();
-
         // Buscar estatísticas do dashboard
-        const stats = await client.query(`
+        const stats = await db.query(`
             SELECT
                 (SELECT COUNT(*) FROM "ServiceOrder" WHERE status IN ('IN_PROGRESS', 'WAITING_PARTS', 'APPROVED')) as "carsInShop",
                 (SELECT COALESCE(SUM(si.price * si.quantity) + SUM(pi.price * pi.quantity), 0)
@@ -27,7 +19,7 @@ export async function GET(request: NextRequest) {
         `);
 
         // Buscar ordens ativas recentes
-        const activeOrders = await client.query(`
+        const activeOrders = await db.query(`
             SELECT 
                 so.id,
                 so.number,
@@ -50,10 +42,35 @@ export async function GET(request: NextRequest) {
             LIMIT 5
         `);
 
+        // Contar veículos aguardando peças
+        const waitingParts = await db.query(`
+            SELECT COUNT(*) as count FROM "ServiceOrder" WHERE status = 'WAITING_PARTS'
+        `);
+
+        // Buscar próximos agendamentos (Ordens Abertas/Orçamento)
+        const nextAppointments = await db.query(`
+            SELECT 
+                so.id,
+                so."entryDate",
+                c.name as "customerName",
+                v.model as "vehicleModel",
+                'Revisão' as "serviceType" -- Placeholder, idealmente viria dos itens
+            FROM "ServiceOrder" so
+            JOIN "Client" c ON so."clientId" = c.id
+            JOIN "Vehicle" v ON so."vehicleId" = v.id
+            WHERE so.status IN ('OPEN', 'QUOTATION')
+            ORDER BY so."entryDate" ASC
+            LIMIT 5
+        `);
+
         return NextResponse.json({
             success: true,
-            stats: stats.rows[0],
+            stats: {
+                ...stats.rows[0],
+                waitingParts: waitingParts.rows[0].count
+            },
             activeOrders: activeOrders.rows,
+            nextAppointments: nextAppointments.rows
         });
 
     } catch (error) {
@@ -66,9 +83,5 @@ export async function GET(request: NextRequest) {
             },
             { status: 500 }
         );
-    } finally {
-        if (client) {
-            client.release();
-        }
     }
 }

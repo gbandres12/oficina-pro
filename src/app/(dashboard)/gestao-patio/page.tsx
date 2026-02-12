@@ -24,6 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { CreateOrderDialog } from '@/components/orders/CreateOrderDialog';
 import {
     Table,
     TableBody,
@@ -59,6 +60,7 @@ export default function GestaoPatioPage() {
     const [loading, setLoading] = useState(true);
     const [view, setView] = useState<'list' | 'kanban'>('list');
     const [searchTerm, setSearchTerm] = useState('');
+    const [isCreateOrderOpen, setIsCreateOrderOpen] = useState(false);
 
     const fetchData = async () => {
         setLoading(true);
@@ -156,7 +158,7 @@ export default function GestaoPatioPage() {
                     <Button variant="outline" className="gap-2 rounded-xl h-11 px-6 font-bold uppercase text-xs">
                         <History className="w-4 h-4" /> Histórico
                     </Button>
-                    <Button className="gap-2 rounded-xl bg-primary h-11 px-6 font-bold uppercase text-xs shadow-lg shadow-primary/20">
+                    <Button className="gap-2 rounded-xl bg-primary h-11 px-6 font-bold uppercase text-xs shadow-lg shadow-primary/20" onClick={() => setIsCreateOrderOpen(true)}>
                         <Plus className="w-4 h-4" /> Nova Entrada (Checklist)
                     </Button>
                 </div>
@@ -331,6 +333,15 @@ export default function GestaoPatioPage() {
                     )}
                 </CardContent>
             </Card>
-        </div>
+
+            <CreateOrderDialog
+                open={isCreateOrderOpen}
+                onOpenChange={setIsCreateOrderOpen}
+                onSuccess={() => {
+                    toast.success('Veículo registrado no pátio com sucesso!');
+                    fetchData();
+                }}
+            />
+        </div >
     );
 }

@@ -1,18 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
-
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-});
+import { db } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
-    let client;
-
     try {
-        client = await pool.connect();
-
         // Buscar ordens de serviço ativas com detalhes completos
-        const result = await client.query(`
+        const result = await db.query(`
             SELECT 
                 so.id,
                 so.number,
@@ -50,7 +42,7 @@ export async function GET(request: NextRequest) {
         `);
 
         // Calcular estatísticas
-        const stats = await client.query(`
+        const stats = await db.query(`
             SELECT 
                 COUNT(*) FILTER (WHERE status IN ('OPEN', 'QUOTATION', 'APPROVED', 'IN_PROGRESS', 'WAITING_PARTS')) as total_patio,
                 COUNT(*) FILTER (WHERE status = 'WAITING_PARTS') as waiting_parts,
@@ -87,9 +79,5 @@ export async function GET(request: NextRequest) {
             },
             { status: 500 }
         );
-    } finally {
-        if (client) {
-            client.release();
-        }
     }
 }

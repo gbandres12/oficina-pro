@@ -31,10 +31,13 @@ interface Vehicle {
     createdAt: string;
 }
 
+import { CreateVehicleDialog } from '@/components/vehicles/CreateVehicleDialog';
+
 export default function VeiculosPage() {
     const [vehicles, setVehicles] = useState<Vehicle[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
+    const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
     const fetchVehicles = async () => {
         setLoading(true);
@@ -96,7 +99,10 @@ export default function VeiculosPage() {
                     </h1>
                     <p className="text-muted-foreground">Gerencie a frota de veículos cadastrados</p>
                 </div>
-                <Button className="gap-2 rounded-xl bg-primary shadow-lg shadow-primary/20">
+                <Button
+                    className="gap-2 rounded-xl bg-primary shadow-lg shadow-primary/20"
+                    onClick={() => setIsCreateDialogOpen(true)}
+                >
                     <Plus className="w-4 h-4" /> Vincular Veículo
                 </Button>
             </div>
@@ -245,6 +251,12 @@ export default function VeiculosPage() {
                     })
                 )}
             </div>
+
+            <CreateVehicleDialog
+                open={isCreateDialogOpen}
+                onOpenChange={setIsCreateDialogOpen}
+                onSuccess={fetchVehicles}
+            />
         </div>
     );
 }

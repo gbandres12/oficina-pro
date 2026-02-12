@@ -21,7 +21,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Car, User, Wrench } from "lucide-react";
+import { Loader2, Car, User, Wrench, Search } from "lucide-react";
 
 interface CreateOrderDialogProps {
     open: boolean;
@@ -53,6 +53,46 @@ export function CreateOrderDialog({ open, onOpenChange, onSuccess }: CreateOrder
         clientReport: '',
         observations: '',
     });
+
+    // Search State
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState<any[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const [showResults, setShowResults] = useState(false);
+
+    const handleSearchClient = async (query: string) => {
+        setSearchQuery(query);
+        if (query.length < 3) {
+            setSearchResults([]);
+            setShowResults(false);
+            return;
+        }
+
+        setIsSearching(true);
+        try {
+            const response = await fetch(`/api/clients/search?q=${encodeURIComponent(query)}`);
+            const data = await response.json();
+            setSearchResults(data.clients || []);
+            setShowResults(true);
+        } catch (error) {
+            console.error('Error searching clients:', error);
+        } finally {
+            setIsSearching(false);
+        }
+    };
+
+    const selectClient = (client: any) => {
+        setFormData(prev => ({
+            ...prev,
+            clientName: client.name,
+            clientEmail: client.email || '',
+            clientPhone: client.phone || '',
+            clientDocument: client.document || '',
+        }));
+        setSearchQuery('');
+        setShowResults(false);
+        toast.success("Cliente selecionado!");
+    };
 
     const handleInputChange = (field: string, value: string) => {
         setFormData(prev => ({ ...prev, [field]: value }));
@@ -93,7 +133,7 @@ export function CreateOrderDialog({ open, onOpenChange, onSuccess }: CreateOrder
 
         setLoading(true);
         try {
-            const response = await fetch('/api/service-orders/create', {
+            const response = await fetch('/api/service-orders', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -153,10 +193,49 @@ export function CreateOrderDialog({ open, onOpenChange, onSuccess }: CreateOrder
                     <div className="space-y-6 py-4">
                         {/* Cliente */}
                         <div className="space-y-4">
-                            <div className="flex items-center gap-2 text-sm font-bold text-slate-700 dark:text-slate-300">
-                                <User className="w-4 h-4" />
-                                Dados do Cliente
+                            <div className="flex items-center justify-between text-sm font-bold text-slate-700 dark:text-slate-300">
+                                <div className="flex items-center gap-2">
+                                    <User className="w-4 h-4" />
+                                    Dados do Cliente
+                                </div>
+                                <div className="text-xs font-normal text-muted-foreground">
+                                    Busque por nome, CPF ou telefone
+                                </div>
                             </div>
+
+                            {/* Search Box */}
+                            <div className="relative">
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        placeholder="Buscar cliente existente..."
+                                        className="pl-9"
+                                        value={searchQuery}
+                                        onChange={(e) => handleSearchClient(e.target.value)}
+                                    />
+                                    {isSearching && (
+                                        <Loader2 className="absolute right-3 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
+                                    )}
+                                </div>
+
+                                {showResults && searchResults.length > 0 && (
+                                    <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-[200px] overflow-y-auto rounded-md border bg-popover text-popover-foreground shadow-md">
+                                        {searchResults.map((client) => (
+                                            <div
+                                                key={client.id}
+                                                className="cursor-pointer px-4 py-2 hover:bg-muted text-sm"
+                                                onClick={() => selectClient(client)}
+                                            >
+                                                <div className="font-bold">{client.name}</div>
+                                                <div className="text-xs text-muted-foreground">
+                                                    {client.document} • {client.phone}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="col-span-2">
                                     <Label htmlFor="clientName">Nome Completo *</Label>

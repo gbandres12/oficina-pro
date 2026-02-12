@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { XMLParser } from 'fast-xml-parser';
-import { Pool } from 'pg';
-
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-});
+import { db } from '@/lib/db';
 
 /**
  * Endpoint para processamento de XML de Nota Fiscal (NF-e)
@@ -29,7 +25,7 @@ export async function POST(req: NextRequest) {
         const items = jsonObj.nfeProc?.NFe?.infNFe?.det || [];
         const normalizedItems = Array.isArray(items) ? items : [items];
 
-        client = await pool.connect();
+        client = await db.getClient();
         await client.query('BEGIN');
 
         let imported = 0;

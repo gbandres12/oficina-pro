@@ -58,5 +58,9 @@ export const db = {
     async fetchAll(text: string, params?: any[]) {
         const res = await this.query(text, params);
         return res.rows;
+    },
+    async getClient() {
+        const pool = getPool();
+        return pool.connect();
     }
 };

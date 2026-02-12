@@ -42,7 +42,7 @@ export default function ClientesPage() {
     const fetchClients = async () => {
         setLoading(true);
         try {
-            const response = await fetch('/api/clients/list');
+            const response = await fetch('/api/clients');
             const data = await response.json();
 
             if (data.success) {

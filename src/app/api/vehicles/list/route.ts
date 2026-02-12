@@ -1,18 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Pool } from 'pg';
-
-const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-});
+import { db } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
-    let client;
-
     try {
-        client = await pool.connect();
-
         // Buscar veículos com informações do cliente e última OS
-        const result = await client.query(`
+        const result = await db.query(`
             SELECT 
                 v.id,
                 v.plate,
@@ -57,9 +49,5 @@ export async function GET(request: NextRequest) {
             },
             { status: 500 }
         );
-    } finally {
-        if (client) {
-            client.release();
-        }
     }
 }
