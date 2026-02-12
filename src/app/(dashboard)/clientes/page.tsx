@@ -19,6 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { ImportCSVDialog } from '@/components/clients/ImportCSVDialog';
+import { CreateClientDialog } from '@/components/clients/CreateClientDialog';
 
 interface Client {
     id: string;
@@ -36,6 +37,7 @@ export default function ClientesPage() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [activeTab, setActiveTab] = useState('all');
+    const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
 
     const fetchClients = async () => {
         setLoading(true);
@@ -87,7 +89,10 @@ export default function ClientesPage() {
                 </div>
                 <div className="flex gap-3">
                     <ImportCSVDialog onSuccess={fetchClients} />
-                    <Button className="gap-2 rounded-xl bg-primary shadow-lg shadow-primary/20">
+                    <Button
+                        className="gap-2 rounded-xl bg-primary shadow-lg shadow-primary/20"
+                        onClick={() => setIsCreateDialogOpen(true)}
+                    >
                         <UserPlus className="w-4 h-4" /> Novo Cliente
                     </Button>
                 </div>
@@ -231,6 +236,12 @@ export default function ClientesPage() {
                     ))
                 )}
             </div>
+
+            <CreateClientDialog
+                open={isCreateDialogOpen}
+                onOpenChange={setIsCreateDialogOpen}
+                onSuccess={fetchClients}
+            />
         </div>
     );
 }

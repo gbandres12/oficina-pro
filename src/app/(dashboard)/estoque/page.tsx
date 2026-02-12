@@ -22,8 +22,11 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Progress } from '@/components/ui/progress';
+import { CreatePartDialog } from '@/components/parts/CreatePartDialog';
 
 export default function EstoquePage() {
+    const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false);
+
     const parts = [
         { id: '1', name: 'Óleo Sintético 5W30', sku: 'OL-5W30-001', stock: 45, min: 10, unit: 'L', price: 65.00, status: 'OK' },
         { id: '2', name: 'Pastilha de Freio Dianteira', sku: 'PF-HD-022', stock: 4, min: 8, unit: 'Par', price: 180.00, status: 'LOW' },
@@ -87,7 +90,10 @@ export default function EstoquePage() {
                             <FileUp className="w-4 h-4" /> Importar Produtos
                         </div>
                     </label>
-                    <Button className="gap-2 rounded-xl bg-primary h-11 px-6 font-bold uppercase text-xs shadow-lg shadow-primary/20">
+                    <Button
+                        className="gap-2 rounded-xl bg-primary h-11 px-6 font-bold uppercase text-xs shadow-lg shadow-primary/20"
+                        onClick={() => setIsCreateDialogOpen(true)}
+                    >
                         <Plus className="w-4 h-4" /> Nova Peça
                     </Button>
                 </div>
@@ -202,6 +208,15 @@ export default function EstoquePage() {
                     </Table>
                 </CardContent>
             </Card>
+
+            <CreatePartDialog
+                open={isCreateDialogOpen}
+                onOpenChange={setIsCreateDialogOpen}
+                onSuccess={() => {
+                    toast.success('Recarregar lista de peças');
+                    // Aqui você pode recarregar a lista de peças
+                }}
+            />
         </div>
     );
 }

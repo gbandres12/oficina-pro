@@ -9,7 +9,8 @@ import {
     Lock,
     Trash2,
     CheckCircle2,
-    ShieldAlert
+    ShieldAlert,
+    Database
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -84,6 +85,19 @@ export default function UsuariosPage() {
                     <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white uppercase tracking-tighter">Acesso Master</h1>
                     <p className="text-muted-foreground font-medium">Gestão de acessos e permissões do sistema.</p>
                 </div>
+                <Button
+                    variant="destructive"
+                    className="gap-2 rounded-xl h-11 px-6 font-bold uppercase text-xs shadow-lg"
+                    onClick={() => {
+                        if (confirm('Tem certeza que deseja limpar todos os dados em cache do navegador? Esta ação não pode ser desfeita.')) {
+                            localStorage.clear();
+                            sessionStorage.clear();
+                            toast.success('Cache limpo com sucesso! Recarregue a página para aplicar as mudanças.');
+                        }
+                    }}
+                >
+                    <Database className="w-4 h-4" /> Limpar Cache
+                </Button>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

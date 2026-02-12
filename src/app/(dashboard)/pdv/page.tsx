@@ -122,7 +122,7 @@ export default function PDVPage() {
     const categories = Array.from(new Set(products.map(p => p.category)));
 
     return (
-        <div className="h-[calc(100vh-64px)] flex bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
+        <div className="min-h-screen flex bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
             {/* Left Panel - Products Catalog */}
             <div className="flex-1 flex flex-col p-4 gap-4 overflow-hidden">
                 {/* Header with Search */}
