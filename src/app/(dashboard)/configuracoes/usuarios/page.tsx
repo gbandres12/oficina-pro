@@ -10,7 +10,8 @@ import {
     Trash2,
     CheckCircle2,
     ShieldAlert,
-    Database
+    Database,
+    Loader2
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -35,6 +36,18 @@ export default function UsuariosPage() {
         password: '',
         role: 'EMPLOYEE'
     });
+    const [errors, setErrors] = useState({
+        name: '',
+        email: '',
+        password: '',
+        role: ''
+    });
+    const [touched, setTouched] = useState({
+        name: false,
+        email: false,
+        password: false,
+        role: false
+    });
 
     const fetchUsers = async () => {
         try {
@@ -52,27 +65,138 @@ export default function UsuariosPage() {
         fetchUsers();
     }, []);
 
+    // Funções de validação
+    const validateName = (name: string): string => {
+        const trimmedName = name.trim();
+        if (!trimmedName) return 'Nome é obrigatório';
+        if (trimmedName.length < 3) return 'Nome deve ter no mínimo 3 caracteres';
+        return '';
+    };
+
+    const validateEmail = (email: string): string => {
+        const trimmedEmail = email.trim().toLowerCase();
+        if (!trimmedEmail) return 'E-mail é obrigatório';
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(trimmedEmail)) return 'E-mail inválido';
+        return '';
+    };
+
+    const validatePassword = (password: string): string => {
+        if (!password) return 'Senha é obrigatória';
+        if (password.length < 8) return 'Senha deve ter no mínimo 8 caracteres';
+        if (!/[a-zA-Z]/.test(password)) return 'Senha deve conter pelo menos 1 letra';
+        if (!/[0-9]/.test(password)) return 'Senha deve conter pelo menos 1 número';
+        return '';
+    };
+
+    const validateRole = (role: string): string => {
+        if (!role) return 'Nível de acesso é obrigatório';
+        return '';
+    };
+
+    // Validar campo individual
+    const validateField = (field: string, value: string) => {
+        let error = '';
+        switch (field) {
+            case 'name':
+                error = validateName(value);
+                break;
+            case 'email':
+                error = validateEmail(value);
+                break;
+            case 'password':
+                error = validatePassword(value);
+                break;
+            case 'role':
+                error = validateRole(value);
+                break;
+        }
+        setErrors(prev => ({ ...prev, [field]: error }));
+        return error === '';
+    };
+
+    // Validar todos os campos
+    const validateForm = (): boolean => {
+        const newErrors = {
+            name: validateName(formData.name),
+            email: validateEmail(formData.email),
+            password: validatePassword(formData.password),
+            role: validateRole(formData.role)
+        };
+        setErrors(newErrors);
+        setTouched({ name: true, email: true, password: true, role: true });
+        return !Object.values(newErrors).some(error => error !== '');
+    };
+
+    // Normalizar dados
+    const normalizeFormData = () => {
+        return {
+            name: formData.name.trim().replace(/\s+/g, ' '), // Colapsar espaços
+            email: formData.email.trim().toLowerCase(),
+            password: formData.password,
+            role: formData.role
+        };
+    };
+
+    const handleBlur = (field: string) => {
+        setTouched(prev => ({ ...prev, [field]: true }));
+        validateField(field, formData[field as keyof typeof formData]);
+    };
+
+    const handleChange = (field: string, value: string) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+        if (touched[field as keyof typeof touched]) {
+            validateField(field, value);
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Validar formulário
+        if (!validateForm()) {
+            toast.error('Por favor, corrija os erros no formulário');
+            return;
+        }
+
         setLoading(true);
 
         try {
+            // Normalizar dados antes de enviar
+            const normalizedData = normalizeFormData();
+
             const res = await fetch('/api/users', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(formData)
+                body: JSON.stringify(normalizedData)
             });
 
             if (res.ok) {
-                toast.success('Usuário criado com sucesso!');
+                toast.success('Operador criado com sucesso! ✓', {
+                    description: `${normalizedData.name} foi adicionado ao sistema.`,
+                    duration: 4000
+                });
                 setFormData({ name: '', email: '', password: '', role: 'EMPLOYEE' });
+                setErrors({ name: '', email: '', password: '', role: '' });
+                setTouched({ name: false, email: false, password: false, role: false });
                 fetchUsers();
             } else {
                 const error = await res.json();
-                toast.error(error.error || 'Erro ao criar usuário');
+                if (error.error?.includes('email')) {
+                    toast.error('E-mail já cadastrado', {
+                        description: 'Este e-mail já está sendo usado por outro operador.'
+                    });
+                    setErrors(prev => ({ ...prev, email: 'E-mail já cadastrado' }));
+                } else {
+                    toast.error('Erro ao criar operador', {
+                        description: error.error || 'Tente novamente em alguns instantes.'
+                    });
+                }
             }
         } catch (error) {
-            toast.error('Ocorreu um erro inesperado');
+            toast.error('Erro de conexão', {
+                description: 'Não foi possível conectar ao servidor. Verifique sua conexão.'
+            });
         } finally {
             setLoading(false);
         }
@@ -112,63 +236,109 @@ export default function UsuariosPage() {
                     <CardContent>
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div className="space-y-2">
-                                <Label htmlFor="name">Nome Completo</Label>
+                                <Label htmlFor="name">Nome Completo *</Label>
                                 <Input
                                     id="name"
                                     placeholder="Ex: Pedro Checklist"
-                                    className="rounded-xl h-11"
+                                    className={`rounded-xl h-11 ${touched.name && errors.name ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                                     value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    required
+                                    onChange={(e) => handleChange('name', e.target.value)}
+                                    onBlur={() => handleBlur('name')}
+                                    disabled={loading}
                                 />
+                                {touched.name && errors.name && (
+                                    <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+                                        <span className="font-semibold">⚠</span> {errors.name}
+                                    </p>
+                                )}
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="email">E-mail de Acesso</Label>
+                                <Label htmlFor="email">E-mail de Acesso *</Label>
                                 <div className="relative">
                                     <Mail className="absolute left-3 top-3.5 w-4 h-4 text-muted-foreground" />
                                     <Input
                                         id="email"
                                         type="email"
                                         placeholder="pedro@oficina.com"
-                                        className="pl-10 rounded-xl h-11"
+                                        className={`pl-10 rounded-xl h-11 ${touched.email && errors.email ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                                         value={formData.email}
-                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                        required
+                                        onChange={(e) => handleChange('email', e.target.value)}
+                                        onBlur={() => handleBlur('email')}
+                                        disabled={loading}
                                     />
                                 </div>
+                                {touched.email && errors.email && (
+                                    <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+                                        <span className="font-semibold">⚠</span> {errors.email}
+                                    </p>
+                                )}
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="role">Nível de Acesso</Label>
+                                <Label htmlFor="role">Nível de Acesso *</Label>
                                 <Select
                                     value={formData.role}
-                                    onValueChange={(val) => setFormData({ ...formData, role: val })}
+                                    onValueChange={(val) => handleChange('role', val)}
+                                    disabled={loading}
                                 >
-                                    <SelectTrigger className="rounded-xl h-11">
-                                        <SelectValue placeholder="Selecione o cargo" />
+                                    <SelectTrigger className={`rounded-xl h-11 ${touched.role && errors.role ? 'border-red-500' : ''}`}>
+                                        <SelectValue placeholder="Selecione o nível de acesso" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="ADMIN">Administrador (Master)</SelectItem>
-                                        <SelectItem value="EMPLOYEE">Checklist / Funcionário</SelectItem>
+                                        <SelectItem value="ADMIN">
+                                            <div className="flex flex-col items-start">
+                                                <span className="font-semibold">Administrador</span>
+                                                <span className="text-xs text-muted-foreground">Acesso completo ao sistema</span>
+                                            </div>
+                                        </SelectItem>
+                                        <SelectItem value="EMPLOYEE">
+                                            <div className="flex flex-col items-start">
+                                                <span className="font-semibold">Funcionário</span>
+                                                <span className="text-xs text-muted-foreground">Acesso limitado (checklist e ordens)</span>
+                                            </div>
+                                        </SelectItem>
                                     </SelectContent>
                                 </Select>
+                                {touched.role && errors.role && (
+                                    <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+                                        <span className="font-semibold">⚠</span> {errors.role}
+                                    </p>
+                                )}
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="password">Senha Temporária</Label>
+                                <Label htmlFor="password">Senha Temporária *</Label>
                                 <div className="relative">
                                     <Lock className="absolute left-3 top-3.5 w-4 h-4 text-muted-foreground" />
                                     <Input
                                         id="password"
                                         type="password"
                                         placeholder="••••••••"
-                                        className="pl-10 rounded-xl h-11"
+                                        className={`pl-10 rounded-xl h-11 ${touched.password && errors.password ? 'border-red-500 focus-visible:ring-red-500' : ''}`}
                                         value={formData.password}
-                                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                        required
+                                        onChange={(e) => handleChange('password', e.target.value)}
+                                        onBlur={() => handleBlur('password')}
+                                        disabled={loading}
                                     />
                                 </div>
+                                {touched.password && errors.password && (
+                                    <p className="text-xs text-red-500 flex items-center gap-1 mt-1">
+                                        <span className="font-semibold">⚠</span> {errors.password}
+                                    </p>
+                                )}
+                                <p className="text-xs text-muted-foreground">
+                                    Mínimo 8 caracteres com pelo menos 1 letra e 1 número
+                                </p>
                             </div>
                             <Button className="w-full h-12 rounded-xl font-bold uppercase text-xs tracking-widest gap-2 shadow-lg shadow-primary/20" disabled={loading}>
-                                <CheckCircle2 className="w-4 h-4" /> Finalizar Cadastro
+                                {loading ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        Criando...
+                                    </>
+                                ) : (
+                                    <>
+                                        <CheckCircle2 className="w-4 h-4" /> Finalizar Cadastro
+                                    </>
+                                )}
                             </Button>
                         </form>
                     </CardContent>
