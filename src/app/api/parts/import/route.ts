@@ -1,11 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { XMLParser } from 'fast-xml-parser';
+import { Pool } from 'pg';
+
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+});
 
 /**
  * Endpoint para processamento de XML de Nota Fiscal (NF-e)
- * Simula a extração de peças e alimentação automática do estoque.
+ * Extração FLEXÍVEL de peças - aceita dados parciais
  */
 export async function POST(req: NextRequest) {
+    let client;
+
     try {
         const formData = await req.formData();
         const file = formData.get('file') as File;
@@ -19,32 +26,128 @@ export async function POST(req: NextRequest) {
         const jsonObj = parser.parse(xmlData);
 
         // Estrutura típica de uma NF-e (Simplificada)
-        // nfeProc -> NFe -> infNFe -> det (detalhes dos itens)
         const items = jsonObj.nfeProc?.NFe?.infNFe?.det || [];
         const normalizedItems = Array.isArray(items) ? items : [items];
 
-        const extractedParts = normalizedItems.map((item: any) => ({
-            name: item.prod?.xProd,
-            sku: item.prod?.cProd,
-            quantity: parseFloat(item.prod?.qCom),
-            price: parseFloat(item.prod?.vUnCom),
-            ncm: item.prod?.NCM
-        }));
+        client = await pool.connect();
+        await client.query('BEGIN');
 
-        // Aqui você faria a integração com o banco de dados (Prisma)
-        // Exemplo: 
-        // for (const part of extractedParts) {
-        //   await prisma.inventoryItem.upsert({ ... })
-        // }
+        let imported = 0;
+        let updated = 0;
+        let errors: string[] = [];
+
+        for (const item of normalizedItems) {
+            try {
+                // Extrair dados do XML
+                const rawName = item.prod?.xProd;
+                const rawSku = item.prod?.cProd;
+                const rawQuantity = item.prod?.qCom;
+                const rawPrice = item.prod?.vUnCom;
+                const rawNcm = item.prod?.NCM;
+
+                // Normalizar campos
+                const normalizedName = rawName?.trim() || null;
+                const normalizedSku = rawSku?.trim().toUpperCase() || null;
+                const quantity = rawQuantity ? parseFloat(rawQuantity) : 0;
+                const price = rawPrice ? Math.round(parseFloat(rawPrice) * 100) : 0; // Centavos
+                const ncm = rawNcm?.trim() || null;
+
+                // ⚡ VALIDAÇÃO FLEXÍVEL: apenas nome OU SKU é obrigatório
+                if (!normalizedName && !normalizedSku) {
+                    errors.push(`Item ignorado: precisa de nome ou SKU - ${JSON.stringify(item.prod)}`);
+                    continue;
+                }
+
+                // Nome padrão se não informado
+                const finalName = normalizedName || `Produto ${normalizedSku}`;
+
+                // Verificar se peça já existe (por SKU ou nome)
+                let existingCheck;
+                if (normalizedSku) {
+                    existingCheck = await client.query(`
+                        SELECT id, stock FROM "InventoryItem" 
+                        WHERE sku = $1
+                        LIMIT 1
+                    `, [normalizedSku]);
+                } else {
+                    existingCheck = await client.query(`
+                        SELECT id, stock FROM "InventoryItem" 
+                        WHERE LOWER(name) = LOWER($1)
+                        LIMIT 1
+                    `, [finalName]);
+                }
+
+                if (existingCheck && existingCheck.rows.length > 0) {
+                    // ✅ Atualizar peça existente
+                    const existingStock = existingCheck.rows[0].stock || 0;
+                    const newStock = existingStock + quantity;
+
+                    await client.query(`
+                        UPDATE "InventoryItem" 
+                        SET 
+                            name = COALESCE($1, name),
+                            sku = COALESCE($2, sku),
+                            stock = $3,
+                            price = COALESCE($4, price),
+                            ncm = COALESCE($5, ncm),
+                            "updatedAt" = CURRENT_TIMESTAMP
+                        WHERE id = $6
+                    `, [
+                        normalizedName,
+                        normalizedSku,
+                        newStock, // Soma o estoque
+                        price > 0 ? price : undefined,
+                        ncm,
+                        existingCheck.rows[0].id
+                    ]);
+                    updated++;
+                } else {
+                    // ✅ Inserir nova peça (aceita campos vazios)
+                    await client.query(`
+                        INSERT INTO "InventoryItem" 
+                        (name, sku, stock, price, "minStock", unit, ncm)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    `, [
+                        finalName,
+                        normalizedSku,
+                        quantity,
+                        price,
+                        0, // minStock padrão
+                        'Un', // unit padrão
+                        ncm
+                    ]);
+                    imported++;
+                }
+            } catch (error) {
+                errors.push(`Erro ao processar item: ${JSON.stringify(item.prod)} - ${error}`);
+            }
+        }
+
+        await client.query('COMMIT');
 
         return NextResponse.json({
             success: true,
-            message: `${extractedParts.length} peças identificadas e processadas.`,
-            data: extractedParts
+            imported,
+            updated,
+            total: imported + updated,
+            errors: errors.length > 0 ? errors : undefined,
+            message: `✅ XML processado: ${imported} novos itens, ${updated} atualizados`
         });
 
     } catch (error) {
+        if (client) {
+            await client.query('ROLLBACK');
+        }
+
         console.error('Erro no processamento do XML:', error);
-        return NextResponse.json({ success: false, error: 'Falha ao processar XML' }, { status: 500 });
+        return NextResponse.json({
+            success: false,
+            error: 'Falha ao processar XML',
+            details: error instanceof Error ? error.message : 'Erro desconhecido'
+        }, { status: 500 });
+    } finally {
+        if (client) {
+            client.release();
+        }
     }
 }
