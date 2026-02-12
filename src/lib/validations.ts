@@ -22,9 +22,7 @@ export const createUserSchema = z.object({
         .regex(/[a-zA-Z]/, 'Senha deve conter pelo menos 1 letra')
         .regex(/[0-9]/, 'Senha deve conter pelo menos 1 número'),
 
-    role: z.enum(['ADMIN', 'EMPLOYEE'], {
-        errorMap: () => ({ message: 'Nível de acesso inválido' })
-    })
+    role: z.enum(['ADMIN', 'EMPLOYEE'])
 });
 
 export const updateUserSchema = createUserSchema.partial();

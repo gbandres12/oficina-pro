@@ -70,13 +70,13 @@ export async function POST(request: Request) {
     } catch (error: any) {
         // Tratamento específico de erros de validação Zod
         if (error instanceof ZodError) {
-            const firstError = error.errors[0];
+            const firstError = error.issues[0];
             return NextResponse.json(
                 {
                     error: 'Dados inválidos',
-                    details: firstError.message,
-                    field: firstError.path.join('.'),
-                    errors: error.errors // Todos os erros para debug
+                    details: firstError?.message || 'Erro de validação',
+                    field: firstError?.path.join('.') || 'unknown',
+                    issues: error.issues // Todos os erros para debug
                 },
                 { status: 400 }
             );
