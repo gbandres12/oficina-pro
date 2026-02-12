@@ -32,17 +32,19 @@ export async function GET(
         }
 
         // Buscar itens relacionados em paralelo
-        const [servicesRes, partsRes, checklistRes, damageRes] = await Promise.all([
+        const [servicesRes, partsRes, checklistRes, damageRes, timelineRes] = await Promise.all([
             db.fetchAll('SELECT * FROM "ServiceItem" WHERE "serviceOrderId" = $1', [id]),
             db.fetchAll('SELECT * FROM "PartItem" WHERE "serviceOrderId" = $1', [id]),
             db.fetchAll('SELECT * FROM "ChecklistItem" WHERE "serviceOrderId" = $1', [id]),
-            db.fetchAll('SELECT * FROM "DamagePoint" WHERE "serviceOrderId" = $1', [id])
+            db.fetchAll('SELECT * FROM "DamagePoint" WHERE "serviceOrderId" = $1', [id]),
+            db.fetchAll('SELECT * FROM "ServiceOrderTimeline" WHERE "serviceOrderId" = $1 ORDER BY "createdAt" DESC', [id])
         ]);
 
         const services = servicesRes || [];
         const parts = partsRes || [];
         const checklistItems = checklistRes || [];
         const damagePoints = damageRes || [];
+        const timeline = timelineRes || [];
 
         // Calcular totais de serviços
         const subtotalServices = services.reduce(
@@ -122,6 +124,10 @@ export async function GET(
 
             // Pontos de dano
             damagePoints: damagePoints,
+
+            // Timeline e Notas
+            timeline: timeline,
+            internalNotes: serviceOrder.internalNotes || '',
 
             // Totais
             totals: {

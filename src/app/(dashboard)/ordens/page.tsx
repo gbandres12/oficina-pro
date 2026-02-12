@@ -15,8 +15,10 @@ import {
     MoreVertical,
     Kanban,
     Loader2,
-    Printer
+    Printer,
+    Eye
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -42,6 +44,7 @@ interface ServiceOrder {
 }
 
 export default function OrdensPage() {
+    const router = useRouter();
     const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false);
     const [isPrintDialogOpen, setIsPrintDialogOpen] = React.useState(false);
     const [selectedOrderId, setSelectedOrderId] = React.useState<string | null>(null);
@@ -274,6 +277,15 @@ export default function OrdensPage() {
                                                 <Badge variant={statusConfig.variant} className={statusConfig.className}>
                                                     {statusConfig.label}
                                                 </Badge>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="gap-2 rounded-xl"
+                                                    onClick={() => router.push(`/ordens/${order.id}`)}
+                                                >
+                                                    <Eye className="w-4 h-4" />
+                                                    Detalhes
+                                                </Button>
                                                 <Button
                                                     variant="outline"
                                                     size="sm"
