@@ -123,9 +123,20 @@ export const ServiceOrderPrint = forwardRef<HTMLDivElement, ServiceOrderPrintPro
                     <table style={{ width: '100%', border: 'none' }}>
                         <tbody>
                             <tr>
-                                <td style={{ width: '15%', verticalAlign: 'top', border: 'none', padding: '4px' }}>
+                                <td style={{ width: '25%', verticalAlign: 'top', border: 'none', padding: '4px' }}>
                                     {companyInfo.logo ? (
-                                        <img src={companyInfo.logo} alt="Logo" style={{ width: '60px', height: '60px' }} />
+                                        <div style={{ width: '150px', backgroundColor: 'white' }}>
+                                            <img
+                                                src={companyInfo.logo}
+                                                alt="Logo"
+                                                style={{
+                                                    width: '100%',
+                                                    height: 'auto',
+                                                    mixBlendMode: 'screen',
+                                                    backgroundColor: 'black'
+                                                }}
+                                            />
+                                        </div>
                                     ) : (
                                         <div style={{
                                             width: '60px',
@@ -142,7 +153,7 @@ export const ServiceOrderPrint = forwardRef<HTMLDivElement, ServiceOrderPrintPro
                                         </div>
                                     )}
                                 </td>
-                                <td style={{ width: '60%', verticalAlign: 'top', border: 'none', padding: '4px' }}>
+                                <td style={{ width: '50%', verticalAlign: 'top', border: 'none', padding: '4px' }}>
                                     <div style={{ fontWeight: 'bold', fontSize: '12pt', marginBottom: '2px' }}>
                                         {companyInfo.name}
                                     </div>

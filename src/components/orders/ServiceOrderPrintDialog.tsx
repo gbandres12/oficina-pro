@@ -32,7 +32,7 @@ export function ServiceOrderPrintDialog({
         city: 'SANTARÉM - PA',
         phone: '9399212345482',
         email: 'WILMAZIINHOAUTOSERVICE@CARNABOR.COM.COM',
-        // logo: '/wilmarzinho-logo.png', // Logo removido para usar fallback SVG
+        logo: '/logo-wilmarzinho.jpg',
     };
 
     const handlePrint = useReactToPrint({
