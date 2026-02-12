@@ -25,6 +25,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { signOut, useSession } from 'next-auth/react';
 import { CreateOrderDialog } from '@/components/orders/CreateOrderDialog';
 import { toast } from 'sonner';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const { data: session } = useSession();
@@ -144,10 +145,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         >
                             <Plus className="w-4 h-4" /> Nova O.S.
                         </Button>
+
+                        <ThemeToggle />
+
                         <Button variant="ghost" size="icon" className="relative">
                             <Bell className="w-5 h-5" />
                             <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900" />
                         </Button>
+
                         <div className="w-px h-6 bg-border mx-1" />
                         <div className="flex flex-col items-end mr-2 hidden sm:flex">
                             <span className="text-[10px] font-bold text-primary">STATUS DA OFICINA</span>

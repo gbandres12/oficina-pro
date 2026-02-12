@@ -27,13 +27,28 @@ import { CreatePartDialog } from '@/components/parts/CreatePartDialog';
 export default function EstoquePage() {
     const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false);
 
-    const parts = [
-        { id: '1', name: 'Óleo Sintético 5W30', sku: 'OL-5W30-001', stock: 45, min: 10, unit: 'L', price: 65.00, status: 'OK' },
-        { id: '2', name: 'Pastilha de Freio Dianteira', sku: 'PF-HD-022', stock: 4, min: 8, unit: 'Par', price: 180.00, status: 'LOW' },
-        { id: '3', name: 'Filtro de Ar Condicionado', sku: 'FA-AC-105', stock: 12, min: 5, unit: 'Un', price: 45.00, status: 'OK' },
-        { id: '4', name: 'Amortecedor Traseiro', sku: 'AM-TS-554', stock: 2, min: 4, unit: 'Un', price: 350.00, status: 'LOW' },
-        { id: '5', name: 'Lâmpada LED H7', sku: 'LP-H7-99', stock: 0, min: 6, unit: 'Un', price: 25.00, status: 'OUT' },
-    ];
+    const [parts, setParts] = React.useState<any[]>([]);
+    const [loading, setLoading] = React.useState(true);
+
+    const fetchParts = async () => {
+        setLoading(true);
+        try {
+            const response = await fetch('/api/stock');
+            const data = await response.json();
+            if (Array.isArray(data)) {
+                setParts(data);
+            }
+        } catch (error) {
+            console.error('Error fetching parts:', error);
+            toast.error('Erro ao carregar estoque');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    React.useEffect(() => {
+        fetchParts();
+    }, []);
 
     return (
         <div className="p-6 space-y-8 max-w-7xl mx-auto">
@@ -106,8 +121,10 @@ export default function EstoquePage() {
                             <Box className="w-8 h-8 text-white" />
                         </div>
                         <div>
-                            <div className="text-3xl font-black">1.250</div>
-                            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Total de Itens</div>
+                            <div className="text-3xl font-black">{loading ? '...' : parts.reduce((acc, part) => acc + Number(part.stock), 0)}</div>
+                            <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                                {loading ? '...' : parts.length} Produtos Cadastrados
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
@@ -118,7 +135,9 @@ export default function EstoquePage() {
                             <AlertTriangle className="w-8 h-8 text-amber-600 dark:text-amber-400" />
                         </div>
                         <div>
-                            <div className="text-3xl font-black">15</div>
+                            <div className="text-3xl font-black">
+                                {loading ? '...' : parts.filter(p => p.status === 'LOW' || p.status === 'OUT').length}
+                            </div>
                             <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Reposição Urgente</div>
                         </div>
                     </CardContent>
@@ -130,7 +149,9 @@ export default function EstoquePage() {
                             <Tag className="w-8 h-8 text-blue-600 dark:text-blue-400" />
                         </div>
                         <div>
-                            <div className="text-3xl font-black">R$ 85k</div>
+                            <div className="text-3xl font-black">
+                                {loading ? '...' : `R$ ${parts.reduce((acc, p) => acc + (Number(p.price) * Number(p.stock)), 0).toLocaleString('pt-BR', { notation: 'compact', maximumFractionDigits: 1 })}`}
+                            </div>
                             <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Valor em Estoque</div>
                         </div>
                     </CardContent>
@@ -165,45 +186,59 @@ export default function EstoquePage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {parts.map((part) => (
-                                <TableRow key={part.id} className="group transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
-                                    <TableCell>
-                                        <div className="text-sm font-bold">{part.name}</div>
-                                        <div className="text-[10px] text-muted-foreground font-medium">Unidade: {part.unit}</div>
-                                    </TableCell>
-                                    <TableCell>
-                                        <code className="text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded font-bold text-slate-500">
-                                            {part.sku}
-                                        </code>
-                                    </TableCell>
-                                    <TableCell>
-                                        <div className="flex flex-col gap-1">
-                                            <div className="text-sm font-black">{part.stock}</div>
-                                            <Progress value={(part.stock / (part.min * 2)) * 100} className="h-1 w-20" />
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="text-sm font-bold">
-                                        R$ {part.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge variant={
-                                            part.status === 'OK' ? 'secondary' :
-                                                part.status === 'LOW' ? 'outline' : 'destructive'
-                                        } className={
-                                            part.status === 'OK' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' :
-                                                part.status === 'LOW' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' : ''
-                                        }>
-                                            {part.status === 'OK' ? 'Disponível' :
-                                                part.status === 'LOW' ? 'Reposição' : 'Esgotado'}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
-                                            <MoreHorizontal className="w-4 h-4" />
-                                        </Button>
+                            {loading ? (
+                                <TableRow>
+                                    <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
+                                        Carregando estoque...
                                     </TableCell>
                                 </TableRow>
-                            ))}
+                            ) : parts.length === 0 ? (
+                                <TableRow>
+                                    <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
+                                        Nenhum item no estoque.
+                                    </TableCell>
+                                </TableRow>
+                            ) : (
+                                parts.map((part) => (
+                                    <TableRow key={part.id} className="group transition-colors hover:bg-slate-50/50 dark:hover:bg-slate-900/50">
+                                        <TableCell>
+                                            <div className="text-sm font-bold">{part.name}</div>
+                                            <div className="text-[10px] text-muted-foreground font-medium">Unidade: {part.unit}</div>
+                                        </TableCell>
+                                        <TableCell>
+                                            <code className="text-[10px] bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded font-bold text-slate-500">
+                                                {part.sku}
+                                            </code>
+                                        </TableCell>
+                                        <TableCell>
+                                            <div className="flex flex-col gap-1">
+                                                <div className="text-sm font-black">{part.stock}</div>
+                                                <Progress value={(part.stock / (part.min * 2)) * 100} className="h-1 w-20" />
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="text-sm font-bold">
+                                            R$ {Number(part.price).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge variant={
+                                                part.status === 'OK' ? 'secondary' :
+                                                    part.status === 'LOW' ? 'outline' : 'destructive'
+                                            } className={
+                                                part.status === 'OK' ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20' :
+                                                    part.status === 'LOW' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' : ''
+                                            }>
+                                                {part.status === 'OK' ? 'Disponível' :
+                                                    part.status === 'LOW' ? 'Reposição' : 'Esgotado'}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground">
+                                                <MoreHorizontal className="w-4 h-4" />
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            )}
                         </TableBody>
                     </Table>
                 </CardContent>
@@ -213,8 +248,8 @@ export default function EstoquePage() {
                 open={isCreateDialogOpen}
                 onOpenChange={setIsCreateDialogOpen}
                 onSuccess={() => {
-                    toast.success('Recarregar lista de peças');
-                    // Aqui você pode recarregar a lista de peças
+                    toast.success('Peça criada com sucesso!');
+                    fetchParts();
                 }}
             />
         </div>

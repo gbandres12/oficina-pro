@@ -19,8 +19,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" className={`${inter.variable} ${montserrat.variable} dark`}>
+    <html lang="pt-BR" className={`${inter.variable} ${montserrat.variable}`} suppressHydrationWarning>
       <body className="antialiased font-sans">
+
         <Providers>
           {children}
           <Toaster position="top-right" richColors />
