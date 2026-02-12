@@ -14,13 +14,15 @@ import {
     Calendar,
     MoreVertical,
     Kanban,
-    Loader2
+    Loader2,
+    Printer
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { CreateOrderDialog } from '@/components/orders/CreateOrderDialog';
+import { ServiceOrderPrintDialog } from '@/components/orders/ServiceOrderPrintDialog';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
@@ -41,6 +43,8 @@ interface ServiceOrder {
 
 export default function OrdensPage() {
     const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false);
+    const [isPrintDialogOpen, setIsPrintDialogOpen] = React.useState(false);
+    const [selectedOrderId, setSelectedOrderId] = React.useState<string | null>(null);
     const [orders, setOrders] = useState<ServiceOrder[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -270,6 +274,18 @@ export default function OrdensPage() {
                                                 <Badge variant={statusConfig.variant} className={statusConfig.className}>
                                                     {statusConfig.label}
                                                 </Badge>
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    className="gap-2 rounded-xl"
+                                                    onClick={() => {
+                                                        setSelectedOrderId(order.id);
+                                                        setIsPrintDialogOpen(true);
+                                                    }}
+                                                >
+                                                    <Printer className="w-4 h-4" />
+                                                    Imprimir
+                                                </Button>
                                                 <Button variant="ghost" size="icon" className="rounded-xl">
                                                     <MoreVertical className="w-4 h-4" />
                                                 </Button>
@@ -379,6 +395,14 @@ export default function OrdensPage() {
                     toast.success('Ordem de serviço criada com sucesso!');
                 }}
             />
+
+            {selectedOrderId && (
+                <ServiceOrderPrintDialog
+                    orderId={selectedOrderId}
+                    open={isPrintDialogOpen}
+                    onOpenChange={setIsPrintDialogOpen}
+                />
+            )}
         </div>
     );
 }
