@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
                 const normalizedName = rawName?.trim() || null;
                 const normalizedSku = rawSku?.trim().toUpperCase() || null;
                 const quantity = rawQuantity ? parseFloat(rawQuantity) : 0;
-                const price = rawPrice ? Math.round(parseFloat(rawPrice) * 100) : 0; // Centavos
+                const price = rawPrice ? parseFloat(rawPrice) : 0;
                 const ncm = rawNcm?.trim() || null;
 
                 // ⚡ VALIDAÇÃO FLEXÍVEL: apenas nome OU SKU é obrigatório
@@ -61,13 +61,13 @@ export async function POST(req: NextRequest) {
                 let existingCheck;
                 if (normalizedSku) {
                     existingCheck = await client.query(`
-                        SELECT id, stock FROM "InventoryItem" 
+                        SELECT id, quantity FROM "InventoryItem" 
                         WHERE sku = $1
                         LIMIT 1
                     `, [normalizedSku]);
                 } else {
                     existingCheck = await client.query(`
-                        SELECT id, stock FROM "InventoryItem" 
+                        SELECT id, quantity FROM "InventoryItem" 
                         WHERE LOWER(name) = LOWER($1)
                         LIMIT 1
                     `, [finalName]);
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
 
                 if (existingCheck && existingCheck.rows.length > 0) {
                     // ✅ Atualizar peça existente
-                    const existingStock = existingCheck.rows[0].stock || 0;
+                    const existingStock = Number(existingCheck.rows[0].quantity) || 0;
                     const newStock = existingStock + quantity;
 
                     await client.query(`
@@ -83,17 +83,15 @@ export async function POST(req: NextRequest) {
                         SET 
                             name = COALESCE($1, name),
                             sku = COALESCE($2, sku),
-                            stock = $3,
-                            price = COALESCE($4, price),
-                            ncm = COALESCE($5, ncm),
+                            quantity = $3,
+                            "unitPrice" = COALESCE($4, "unitPrice"),
                             "updatedAt" = CURRENT_TIMESTAMP
-                        WHERE id = $6
+                        WHERE id = $5
                     `, [
                         normalizedName,
                         normalizedSku,
                         newStock, // Soma o estoque
                         price > 0 ? price : undefined,
-                        ncm,
                         existingCheck.rows[0].id
                     ]);
                     updated++;
@@ -101,16 +99,14 @@ export async function POST(req: NextRequest) {
                     // ✅ Inserir nova peça (aceita campos vazios)
                     await client.query(`
                         INSERT INTO "InventoryItem" 
-                        (name, sku, stock, price, "minStock", unit, ncm)
-                        VALUES ($1, $2, $3, $4, $5, $6, $7)
+                        (name, sku, quantity, "unitPrice", "minQuantity")
+                        VALUES ($1, $2, $3, $4, $5)
                     `, [
                         finalName,
                         normalizedSku,
                         quantity,
                         price,
-                        0, // minStock padrão
-                        'Un', // unit padrão
-                        ncm
+                        0 // minQuantity padrão
                     ]);
                     imported++;
                 }

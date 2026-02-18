@@ -27,12 +27,11 @@ export async function POST(request: NextRequest) {
         const values = [id, serviceOrderId, status, description || null, userId || null, createdAt];
         const newEvent = await db.fetchOne(query, values);
 
-        // Opcional: Atualizar status da OS principal também se necessário
-        // Por padrão, manter sincronizado é bom.
-        // Vamos atualizar o status da OS se o status da timeline mudar o estado geral
-        // Mas a timeline pode ter eventos que não mudam o status da OS (ex: "Nota adicionada").
-        // Vamos assumir que o frontend manda o status da OS se quiser atualizar.
-        // Por enquanto, só insere na timeline.
+        // Atualizar status da OS principal para manter sincronia
+        await db.query(
+            'UPDATE "ServiceOrder" SET "status" = $1, "updatedAt" = $2 WHERE id = $3',
+            [status, createdAt, serviceOrderId]
+        );
 
         return NextResponse.json({ success: true, data: newEvent });
     } catch (error) {

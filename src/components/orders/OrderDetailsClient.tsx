@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Printer } from 'lucide-react';
 import { ServiceOrderPrintDialog } from '@/components/orders/ServiceOrderPrintDialog';
+import { OrderItemsManager } from '@/components/orders/OrderItemsManager';
 import { toast } from 'sonner';
 
 interface OrderDetailsClientProps {
@@ -69,6 +70,14 @@ export function OrderDetailsClient({ initialOrder, userRole }: OrderDetailsClien
                         onStatusChange={refreshOrder}
                     />
 
+                    {/* Gestão de Itens (Peças e Serviços) */}
+                    <OrderItemsManager
+                        orderId={order.id}
+                        services={order.services}
+                        parts={order.parts}
+                        onItemsChange={refreshOrder}
+                    />
+
                     {/* Detalhes Técnicos */}
                     <Card>
                         <CardHeader>
@@ -82,39 +91,6 @@ export function OrderDetailsClient({ initialOrder, userRole }: OrderDetailsClien
                             <div>
                                 <h3 className="font-semibold text-sm text-gray-500">Diagnóstico/Observações</h3>
                                 <p className="bg-gray-50 p-3 rounded-md mt-1 text-sm">{order.observations || 'Nenhuma observação registrada.'}</p>
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    {/* Serviços e Peças (Resumo) */}
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Serviços e Peças</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-4">
-                                <div>
-                                    <h4 className="font-medium mb-2">Serviços ({order.services.length})</h4>
-                                    <ul className="list-disc pl-5 text-sm space-y-1">
-                                        {order.services.map(s => (
-                                            <li key={s.id}>{s.description} - {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(s.total)}</li>
-                                        ))}
-                                    </ul>
-                                </div>
-                                <div className="border-t pt-4">
-                                    <h4 className="font-medium mb-2">Peças ({order.parts.length})</h4>
-                                    <ul className="list-disc pl-5 text-sm space-y-1">
-                                        {order.parts.map(p => (
-                                            <li key={p.id}>{p.name} ({Number(p.quantity)}) - {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(p.total)}</li>
-                                        ))}
-                                    </ul>
-                                </div>
-                                <div className="border-t pt-4 flex justify-end">
-                                    <div className="text-right">
-                                        <p className="text-sm text-gray-500">Total Geral</p>
-                                        <p className="text-xl font-bold">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(order.totals.totalFinal)}</p>
-                                    </div>
-                                </div>
                             </div>
                         </CardContent>
                     </Card>

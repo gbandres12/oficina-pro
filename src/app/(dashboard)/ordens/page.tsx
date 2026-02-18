@@ -16,7 +16,9 @@ import {
     Kanban,
     Loader2,
     Printer,
-    Eye
+    Eye,
+    FileUp,
+    Filter
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -29,7 +31,6 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { OrderStatsCard } from '@/components/orders/OrderStatsCard';
-import { FileDown, FileUp, Filter } from 'lucide-react';
 
 interface ServiceOrder {
     id: string;
@@ -198,7 +199,7 @@ export default function OrdensPage() {
             </div>
 
             {/* Search and Filters Section */}
-            <Card className="border-none shadow-xl bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-800">
+            <Card className="shadow-lg bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-800">
                 <CardContent className="p-4">
                     <div className="flex flex-col md:flex-row gap-4">
                         <div className="relative flex-1 group">
@@ -226,7 +227,7 @@ export default function OrdensPage() {
                             <p className="font-bold uppercase tracking-widest text-xs">Sincronizando Ordens...</p>
                         </div>
                     ) : filteredOrders.length === 0 ? (
-                        <Card className="border-none shadow-xl bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
+                        <Card className="shadow-lg bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-800">
                             <CardContent className="p-20 flex flex-col items-center justify-center gap-6 text-muted-foreground">
                                 <div className="p-6 bg-slate-50 dark:bg-slate-800 rounded-full">
                                     <ClipboardList className="w-16 h-16 opacity-20" />
@@ -244,7 +245,7 @@ export default function OrdensPage() {
                         filteredOrders.map((order) => {
                             const statusConfig = getStatusConfig(order.status);
                             return (
-                                <Card key={order.id} className="border-none shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1 bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-800 group">
+                                <Card key={order.id} className="shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1 bg-white dark:bg-slate-900 rounded-2xl overflow-hidden border border-slate-100 dark:border-slate-800 group">
                                     <CardContent className="p-0">
                                         <div className="flex flex-col md:flex-row items-stretch">
                                             {/* O.S. Number Column */}
