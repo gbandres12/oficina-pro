@@ -6,7 +6,7 @@ import { SupplierType } from '@/types/supplier';
 // GET /api/suppliers/[id] - Get specific supplier
 export async function GET(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const session = await auth();
@@ -14,7 +14,7 @@ export async function GET(
             return NextResponse.json({ success: false, error: 'Não autorizado' }, { status: 401 });
         }
 
-        const { id } = params;
+        const { id } = await params;
 
         const result = await db.query(
             'SELECT * FROM "Supplier" WHERE "id" = $1',
@@ -44,7 +44,7 @@ export async function GET(
 // PUT /api/suppliers/[id] - Update supplier
 export async function PUT(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const session = await auth();
@@ -52,7 +52,7 @@ export async function PUT(
             return NextResponse.json({ success: false, error: 'Não autorizado' }, { status: 401 });
         }
 
-        const { id } = params;
+        const { id } = await params;
         const body = await request.json();
 
         // Check if supplier exists
@@ -147,7 +147,7 @@ export async function PUT(
 // DELETE /api/suppliers/[id] - Soft delete (deactivate) supplier
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const session = await auth();
@@ -155,7 +155,7 @@ export async function DELETE(
             return NextResponse.json({ success: false, error: 'Não autorizado' }, { status: 401 });
         }
 
-        const { id } = params;
+        const { id } = await params;
 
         // Check if supplier exists
         const existingSupplier = await db.query(
