@@ -13,7 +13,8 @@ import {
     ChevronRight,
     Wrench,
     DollarSign,
-    ArrowRight
+    ArrowRight,
+    History
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -49,7 +50,8 @@ export default function DashboardPage() {
         monthlyRevenue: 0,
         pendingOrders: 0,
         stockAlerts: 0,
-        waitingParts: 0
+        waitingParts: 0,
+        legacyPending: 0
     });
     const [activeOrders, setActiveOrders] = React.useState<any[]>([]);
     const [nextAppointments, setNextAppointments] = React.useState<any[]>([]);
@@ -129,7 +131,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
                 <Card className="border border-slate-100 dark:border-slate-800 shadow-lg bg-white dark:bg-slate-900 rounded-2xl overflow-hidden hover:shadow-xl transition-all hover:-translate-y-1">
                     <CardContent className="p-6">
                         <div className="flex justify-between items-start mb-6">
@@ -181,6 +183,21 @@ export default function DashboardPage() {
                         </div>
                         <div className="text-3xl font-black text-slate-900 dark:text-white mb-1">{loading ? '...' : stats.stockAlerts}</div>
                         <div className="text-sm font-bold text-muted-foreground uppercase tracking-wide">Itens Críticos</div>
+                    </CardContent>
+                </Card>
+
+                <Card className="border border-slate-100 dark:border-slate-800 shadow-lg bg-white dark:bg-slate-900 rounded-2xl overflow-hidden hover:shadow-xl transition-all hover:-translate-y-1">
+                    <CardContent className="p-6">
+                        <div className="flex justify-between items-start mb-6">
+                            <div className="p-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                                <History className="w-6 h-6" />
+                            </div>
+                            <Badge variant="outline" className="text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-lg px-2.5 py-0.5 font-bold">Histórico</Badge>
+                        </div>
+                        <div className="text-3xl font-black text-slate-900 dark:text-white mb-1">
+                            {loading ? '...' : `R$ ${Number(stats.legacyPending || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+                        </div>
+                        <div className="text-sm font-bold text-muted-foreground uppercase tracking-wide">Pendências Legado</div>
                     </CardContent>
                 </Card>
             </div>

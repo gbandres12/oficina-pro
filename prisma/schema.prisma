@@ -33,31 +33,42 @@ model Vehicle {
 }
 
 model ServiceOrder {
-  id             String                 @id @default(cuid())
-  number         Int                    @unique @default(autoincrement())
-  status         OrderStatus            @default(OPEN)
-  km             Int
-  clientId       String
-  vehicleId      String
-  clientReport   String?
-  signatureUrl   String?
-  createdAt      DateTime               @default(now())
-  entryDate      DateTime               @default(now())
-  exitDate       DateTime?
-  fuelLevel      Int?
-  mechanic       String?
+  id                 String                 @id @default(cuid())
+  number             Int                    @unique @default(autoincrement())
+  status             OrderStatus            @default(OPEN)
+  km                 Int
+  clientId           String?
+  vehicleId          String?
+  clientReport       String?
+  signatureUrl       String?
+  createdAt          DateTime               @default(now())
+  entryDate          DateTime               @default(now())
+  exitDate           DateTime?
+  fuelLevel          Int?
+  mechanic           String?
 
-  observations   String?
-  internalNotes  String?                // Notas internas apenas para ADMIN/MASTER
-  updatedAt      DateTime               @updatedAt
-  checklistItems ChecklistItem[]
-  damagePoints   DamagePoint[]
-  financials     FinancialTransaction[]
-  parts          PartItem[]
-  services       ServiceItem[]
-  timeline       ServiceOrderTimeline[] // Relacionamento com timeline
-  client         Client                 @relation(fields: [clientId], references: [id])
-  vehicle        Vehicle                @relation(fields: [vehicleId], references: [id])
+  observations       String?
+  internalNotes      String?                // Notas internas apenas para ADMIN/MASTER
+  updatedAt          DateTime               @updatedAt
+
+  // Campos para legado
+  origin             String                 @default("SYSTEM") // 'SYSTEM' ou 'LEGACY'
+  legacyNumber       String?
+  legacyTotalValue   Decimal?
+  legacyPaidValue    Decimal?
+  legacyClientName   String?
+  legacyVehiclePlate String?
+  migratedAt         DateTime?
+  migratedBy         String?
+
+  checklistItems     ChecklistItem[]
+  damagePoints       DamagePoint[]
+  financials         FinancialTransaction[]
+  parts              PartItem[]
+  services           ServiceItem[]
+  timeline           ServiceOrderTimeline[] // Relacionamento com timeline
+  client             Client?                @relation(fields: [clientId], references: [id])
+  vehicle            Vehicle?               @relation(fields: [vehicleId], references: [id])
 }
 
 model ServiceOrderTimeline {

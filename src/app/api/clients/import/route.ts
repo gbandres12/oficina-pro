@@ -16,22 +16,22 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Ler o conteúdo do arquivo CSV
         const text = await file.text();
 
-        // Parse do CSV
+        // Parse do CSV com normalização de headers e detecção de delimitador
         const result = await new Promise<any>((resolve, reject) => {
             Papa.parse(text, {
                 header: true,
                 skipEmptyLines: true,
+                transformHeader: (header) => header.trim().toLowerCase(),
                 complete: resolve,
-                error: reject
+                error: (error: any) => reject(error)
             });
         });
 
         if (!result.data || result.data.length === 0) {
             return NextResponse.json(
-                { error: 'Arquivo CSV vazio ou inválido' },
+                { error: 'Arquivo CSV vazio ou inválido. Verifique os cabeçalhos.' },
                 { status: 400 }
             );
         }
@@ -41,51 +41,57 @@ export async function POST(request: NextRequest) {
 
         let imported = 0;
         let updated = 0;
+        let skipped = 0;
         let errors: string[] = [];
 
         for (const row of result.data) {
             try {
-                const { nome, email, telefone, cpf, cnpj, endereco } = row;
+                // Mapear campos (suporta 'nome' ou 'name', 'email', 'telefone' ou 'phone', etc)
+                const nome = row.nome || row.name || row.cliente;
+                const email = row.email || row.e_mail;
+                const telefone = row.telefone || row.phone || row.celular;
+                const cpf = row.cpf;
+                const cnpj = row.cnpj;
+                const endereco = row.endereco || row.address || row.logradouro;
 
-                // Normalizar campos (trim e limpar)
+                // Normalizar campos
                 const normalizedName = nome?.trim();
                 const normalizedEmail = email?.trim().toLowerCase() || null;
-                const normalizedPhone = telefone?.replace(/\D/g, '') || null; // Remove não numéricos
+                const normalizedPhone = telefone?.replace(/\D/g, '') || null;
                 const normalizedCpf = cpf?.replace(/\D/g, '') || null;
                 const normalizedCnpj = cnpj?.replace(/\D/g, '') || null;
                 const normalizedAddress = endereco?.trim() || null;
 
-                // ⚡ VALIDAÇÃO FLEXÍVEL: apenas nome é obrigatório
-                if (!normalizedName || normalizedName.length === 0) {
-                    errors.push(`Linha ignorada: nome é obrigatório - ${JSON.stringify(row)}`);
+                // Validação: nome e telefone são obrigatórios para evitar erros de banco
+                if (!normalizedName) {
+                    errors.push(`Ignorado: Nome faltando na linha ${JSON.stringify(row)}`);
+                    skipped++;
                     continue;
                 }
 
-                // Documento pode ser CPF ou CNPJ
+                if (!normalizedPhone) {
+                    errors.push(`Ignorado: Telefone faltando para o cliente "${normalizedName}"`);
+                    skipped++;
+                    continue;
+                }
+
                 const document = normalizedCpf || normalizedCnpj || null;
 
-                // Verificar se cliente já existe (por telefone, documento ou email)
+                // Verificar se cliente já existe
                 let existingCheck;
-                if (normalizedPhone || document || normalizedEmail) {
-                    existingCheck = await client.query(`
-                        SELECT id FROM "Client" 
-                        WHERE 
-                            (phone IS NOT NULL AND phone = $1) OR 
-                            (document IS NOT NULL AND document = $2) OR
-                            (email IS NOT NULL AND LOWER(email) = LOWER($3))
-                        LIMIT 1
-                    `, [normalizedPhone, document, normalizedEmail]);
+                if (document) {
+                    existingCheck = await client.query(
+                        'SELECT id FROM "Client" WHERE document = $1 LIMIT 1',
+                        [document]
+                    );
                 } else {
-                    // Se não tem identificador único, verificar por nome
-                    existingCheck = await client.query(`
-                        SELECT id FROM "Client" 
-                        WHERE LOWER(name) = LOWER($1)
-                        LIMIT 1
-                    `, [normalizedName]);
+                    existingCheck = await client.query(
+                        'SELECT id FROM "Client" WHERE phone = $1 LIMIT 1',
+                        [normalizedPhone]
+                    );
                 }
 
                 if (existingCheck && existingCheck.rows.length > 0) {
-                    // ✅ Atualizar cliente existente (preserva valores existentes se novo for vazio)
                     await client.query(`
                         UPDATE "Client" 
                         SET 
@@ -106,7 +112,6 @@ export async function POST(request: NextRequest) {
                     ]);
                     updated++;
                 } else {
-                    // ✅ Inserir novo cliente (aceita campos vazios)
                     await client.query(`
                         INSERT INTO "Client" (name, email, phone, document, address)
                         VALUES ($1, $2, $3, $4, $5)
@@ -120,7 +125,8 @@ export async function POST(request: NextRequest) {
                     imported++;
                 }
             } catch (error) {
-                errors.push(`Erro ao processar linha: ${JSON.stringify(row)} - ${error}`);
+                console.error('Erro na linha:', row, error);
+                errors.push(`Erro ao processar "${row.nome || 'desconhecido'}": ${error instanceof Error ? error.message : 'Erro no banco'}`);
             }
         }
 
@@ -130,28 +136,20 @@ export async function POST(request: NextRequest) {
             success: true,
             imported,
             updated,
+            skipped,
             total: imported + updated,
             errors: errors.length > 0 ? errors : undefined,
-            message: `✅ Importação concluída: ${imported} novos, ${updated} atualizados`
+            message: `✅ Importação concluída: ${imported} novos, ${updated} atualizados.${skipped > 0 ? ` ${skipped} ignorados.` : ''}`
         });
 
     } catch (error) {
-        if (client) {
-            await client.query('ROLLBACK');
-        }
-
-        console.error('Erro ao importar clientes:', error);
-
+        if (client) await client.query('ROLLBACK');
+        console.error('Erro crítico na importação:', error);
         return NextResponse.json(
-            {
-                error: 'Erro ao importar clientes',
-                details: error instanceof Error ? error.message : 'Erro desconhecido'
-            },
+            { error: 'Falha no processamento do CSV', details: error instanceof Error ? error.message : 'Erro interno' },
             { status: 500 }
         );
     } finally {
-        if (client) {
-            client.release();
-        }
+        if (client) client.release();
     }
 }

@@ -125,15 +125,14 @@ export const ServiceOrderPrint = forwardRef<HTMLDivElement, ServiceOrderPrintPro
                             <tr>
                                 <td style={{ width: '25%', verticalAlign: 'top', border: 'none', padding: '4px' }}>
                                     {companyInfo.logo ? (
-                                        <div style={{ width: '150px', backgroundColor: 'white' }}>
+                                        <div style={{ width: '150px' }}>
                                             <img
                                                 src={companyInfo.logo}
                                                 alt="Logo"
                                                 style={{
                                                     width: '100%',
                                                     height: 'auto',
-                                                    mixBlendMode: 'screen',
-                                                    backgroundColor: 'black'
+                                                    objectFit: 'contain'
                                                 }}
                                             />
                                         </div>

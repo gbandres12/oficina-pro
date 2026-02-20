@@ -14,7 +14,8 @@ import {
     MoreVertical,
     Loader2,
     AlertTriangle,
-    ArrowRight
+    ArrowRight,
+    History
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -57,6 +58,7 @@ export default function FinanceiroPage() {
     const [selectedTab, setSelectedTab] = useState('all');
     const [searchTerm, setSearchTerm] = useState('');
     const [transactions, setTransactions] = useState<Transaction[]>([]);
+    const [legacyPending, setLegacyPending] = useState(0);
     const [loading, setLoading] = useState(true);
 
     const fetchTransactions = async () => {
@@ -66,6 +68,7 @@ export default function FinanceiroPage() {
             const data = await response.json();
             if (data.success) {
                 setTransactions(data.transactions);
+                setLegacyPending(data.legacyPendingTotal || 0);
             } else {
                 toast.error('Erro ao carregar transações');
             }
@@ -139,6 +142,7 @@ export default function FinanceiroPage() {
         { label: 'Receitas (Mês)', value: `R$ ${statsData.monthlyIncome.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, icon: ArrowUpCircle, color: 'text-emerald-600', bg: 'bg-emerald-50' },
         { label: 'Despesas (Mês)', value: `R$ ${statsData.monthlyExpense.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, icon: ArrowDownCircle, color: 'text-red-600', bg: 'bg-red-50' },
         { label: 'Total Vencido', value: `R$ ${statsData.totalOverdue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, icon: AlertTriangle, color: 'text-amber-600', bg: 'bg-amber-50' },
+        { label: 'Pendências (Legado)', value: `R$ ${legacyPending.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, icon: History, color: 'text-slate-600', bg: 'bg-slate-100' },
     ];
 
     const getCostCentersData = () => {

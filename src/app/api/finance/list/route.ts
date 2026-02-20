@@ -26,9 +26,19 @@ export async function GET(request: NextRequest) {
             LIMIT 500
         `);
 
+        const legacyResult = await db.query(`
+            SELECT COALESCE(SUM("legacyTotalValue" - "legacyPaidValue"), 0) as total
+            FROM "ServiceOrder" 
+            WHERE origin = 'LEGACY' 
+              AND status NOT IN ('FINISHED', 'CANCELLED') 
+              AND ("legacyTotalValue" - "legacyPaidValue") > 0
+        `);
+        const legacyPendingTotal = legacyResult.rows[0].total;
+
         return NextResponse.json({
             success: true,
             transactions: result.rows,
+            legacyPendingTotal
         });
 
     } catch (error) {

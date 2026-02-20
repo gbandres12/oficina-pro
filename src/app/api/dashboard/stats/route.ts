@@ -14,8 +14,9 @@ export async function GET(request: NextRequest) {
                  WHERE EXTRACT(MONTH FROM so."createdAt") = EXTRACT(MONTH FROM CURRENT_DATE)
                  AND EXTRACT(YEAR FROM so."createdAt") = EXTRACT(YEAR FROM CURRENT_DATE)
                 ) as "monthlyRevenue",
-                (SELECT COUNT(*) FROM "ServiceOrder" WHERE status IN ('OPEN', 'QUOTATION', 'APPROVED')) as "pendingOrders",
-                (SELECT COUNT(*) FROM "InventoryItem" WHERE quantity <= "minQuantity") as "stockAlerts"
+                (SELECT COUNT(*) FROM "ServiceOrder" WHERE status IN ('OPEN', 'QUOTATION', 'APPROVED') AND origin = 'SYSTEM') as "pendingOrders",
+                (SELECT COUNT(*) FROM "InventoryItem" WHERE quantity <= "minQuantity") as "stockAlerts",
+                (SELECT COALESCE(SUM("legacyTotalValue" - "legacyPaidValue"), 0) FROM "ServiceOrder" WHERE origin = 'LEGACY' AND status NOT IN ('FINISHED', 'CANCELLED') AND ("legacyTotalValue" - "legacyPaidValue") > 0) as "legacyPending"
         `);
 
         // Buscar ordens ativas recentes
