@@ -7,7 +7,6 @@ import {
     Plus,
     Clock,
     CheckCircle2,
-    AlertCircle,
     Wrench,
     User,
     Car,
@@ -22,17 +21,17 @@ import {
     Loader2
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { CreateOrderDialog } from '@/components/orders/CreateOrderDialog';
 import { ServiceOrderPrintDialog } from '@/components/orders/ServiceOrderPrintDialog';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
 import { OrderStatsCard } from '@/components/orders/OrderStatsCard';
 import { LegacyOrderList } from '@/components/orders/LegacyOrderList';
+import { ImportLegacyCSVDialog } from '@/components/orders/ImportLegacyCSVDialog';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -59,6 +58,7 @@ export default function OrdensPage() {
     const router = useRouter();
     const [isCreateDialogOpen, setIsCreateDialogOpen] = React.useState(false);
     const [isPrintDialogOpen, setIsPrintDialogOpen] = React.useState(false);
+    const [isImportDialogOpen, setIsImportDialogOpen] = React.useState(false);
     const [selectedOrderId, setSelectedOrderId] = React.useState<string | null>(null);
     const [orders, setOrders] = useState<ServiceOrder[]>([]);
     const [loading, setLoading] = useState(true);
@@ -99,7 +99,7 @@ export default function OrdensPage() {
         open: orders.filter(o => o.status === 'OPEN').length,
         inProgress: orders.filter(o => o.status === 'IN_PROGRESS').length,
         waitingParts: orders.filter(o => o.status === 'WAITING_PARTS').length,
-        completed: orders.filter(o => o.status === 'COMPLETED').length,
+        completed: orders.filter(o => o.status === 'FINISHED' || o.status === 'COMPLETED').length,
     };
 
     const getStatusConfig = (status: string) => {
@@ -107,6 +107,7 @@ export default function OrdensPage() {
             'OPEN': { label: 'Aberta', variant: 'outline', className: 'border-blue-200 bg-blue-50 text-blue-700' },
             'IN_PROGRESS': { label: 'Em Execução', variant: 'default', className: 'bg-yellow-500' },
             'WAITING_PARTS': { label: 'Aguardando Peças', variant: 'secondary', className: 'bg-orange-500 text-white' },
+            'FINISHED': { label: 'Finalizada', variant: 'outline', className: 'border-green-200 bg-green-50 text-green-700' },
             'COMPLETED': { label: 'Finalizada', variant: 'outline', className: 'border-green-200 bg-green-50 text-green-700' },
             'APPROVED': { label: 'Aprovada', variant: 'default', className: 'bg-green-600' },
             'QUOTATION': { label: 'Orçamento', variant: 'outline', className: 'border-purple-200 bg-purple-50 text-purple-700' },
@@ -161,21 +162,7 @@ export default function OrdensPage() {
                                 <Button
                                     variant="outline"
                                     className="h-12 border-2 border-slate-200 dark:border-slate-800 rounded-xl px-6 font-bold hover:bg-slate-50 dark:hover:bg-slate-900 gap-2 transition-all"
-                                    onClick={() => {
-                                        const input = document.createElement('input');
-                                        input.type = 'file';
-                                        input.accept = '.csv';
-                                        input.onchange = async (e) => {
-                                            const file = (e.target as HTMLInputElement).files?.[0];
-                                            if (file) {
-                                                toast.loading("Importando arquivo...");
-                                                // TODO: Chamar API de importação
-                                                toast.dismiss();
-                                                toast.success("Arquivo selecionado para importação");
-                                            }
-                                        };
-                                        input.click();
-                                    }}
+                                    onClick={() => setIsImportDialogOpen(true)}
                                 >
                                     <FileUp className="w-4 h-4" /> Importar CSV
                                 </Button>
@@ -505,6 +492,12 @@ export default function OrdensPage() {
                     fetchOrders();
                     toast.success('Ordem de serviço criada com sucesso!');
                 }}
+            />
+
+            <ImportLegacyCSVDialog
+                open={isImportDialogOpen}
+                onOpenChange={setIsImportDialogOpen}
+                onSuccess={fetchOrders}
             />
 
             {selectedOrderId && (

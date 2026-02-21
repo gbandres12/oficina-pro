@@ -6,12 +6,10 @@ import {
     ArrowDownCircle,
     ArrowUpCircle,
     Wallet,
-    Filter,
     Download,
     Plus,
     PieChart as PieChartIcon,
     Search,
-    MoreVertical,
     Loader2,
     AlertTriangle,
     ArrowRight,
@@ -23,7 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 
 interface Transaction {
@@ -40,16 +38,10 @@ interface Transaction {
 }
 
 import {
-    BarChart,
-    Bar,
     XAxis,
-    YAxis,
     CartesianGrid,
     Tooltip,
     ResponsiveContainer,
-    Cell,
-    LineChart,
-    Line,
     AreaChart,
     Area
 } from 'recharts';
@@ -202,6 +194,36 @@ export default function FinanceiroPage() {
 
     const chartData = getChartData();
     const dataHealth = getDataHealth();
+    const exportTransactionsCsv = () => {
+        if (filteredTransactions.length === 0) {
+            toast.info('Não há transações para exportar');
+            return;
+        }
+
+        const header = ['Data', 'Tipo', 'Status', 'Descricao', 'Categoria', 'Cliente', 'OS', 'Valor'];
+        const rows = filteredTransactions.map((t) => [
+            formatDate(t.date),
+            t.type,
+            t.status,
+            `"${(t.description || '').replace(/"/g, '""')}"`,
+            `"${((t.category || t.costCenterName || 'Geral') || '').replace(/"/g, '""')}"`,
+            `"${(t.clientName || '').replace(/"/g, '""')}"`,
+            t.soNumber?.toString() || '',
+            Number(t.amount).toFixed(2),
+        ]);
+
+        const csv = [header, ...rows].map((line) => line.join(',')).join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `financeiro-${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        toast.success('Relatório exportado');
+    };
 
     return (
         <div className="p-8 space-y-8 max-w-[1600px] mx-auto">
@@ -211,10 +233,10 @@ export default function FinanceiroPage() {
                     <p className="text-muted-foreground mt-2 font-medium">Controle de fluxo de caixa, conciliação e relatórios.</p>
                 </div>
                 <div className="flex gap-3">
-                    <Button variant="outline" className="h-12 px-6 rounded-xl border-slate-200 dark:border-slate-800 font-bold gap-2">
+                    <Button variant="outline" className="h-12 px-6 rounded-xl border-slate-200 dark:border-slate-800 font-bold gap-2" onClick={exportTransactionsCsv}>
                         <Download className="w-4 h-4" /> Exportar Relatórios
                     </Button>
-                    <Button className="h-12 px-6 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold shadow-xl shadow-slate-900/10 gap-2">
+                    <Button className="h-12 px-6 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold shadow-xl shadow-slate-900/10 gap-2" onClick={() => toast.info('Cadastro de lançamento em desenvolvimento')}>
                         <Plus className="w-4 h-4" /> Novo Lançamento
                     </Button>
                 </div>
@@ -331,13 +353,17 @@ export default function FinanceiroPage() {
                     <p className="text-sm font-medium text-slate-600 dark:text-slate-400 leading-relaxed mb-4 relative z-10">
                         Você possui <strong className="text-slate-900 dark:text-white">{transactions.filter(t => isOverdue(t)).length} títulos vencidos</strong>. Acompanhe de perto para evitar impacto no caixa.
                     </p>
-                    <Button variant="outline" className="w-full border-amber-200 text-amber-700 hover:bg-amber-50 relative z-10 font-bold">
+                    <Button
+                        variant="outline"
+                        className="w-full border-amber-200 text-amber-700 hover:bg-amber-50 relative z-10 font-bold"
+                        onClick={() => setSelectedTab('vencidos')}
+                    >
                         Ver Vencidos
                     </Button>
                 </Card>
             </div>
 
-            <Tabs defaultValue="all" className="w-full" onValueChange={setSelectedTab}>
+            <Tabs value={selectedTab} className="w-full" onValueChange={setSelectedTab}>
                 <div className="flex items-center justify-between mb-6">
                     <TabsList className="bg-slate-100 dark:bg-slate-900 p-1 rounded-xl border border-slate-200 dark:border-slate-800 h-14 w-full md:w-auto overflow-x-auto justify-start">
                         <TabsTrigger value="all" className="rounded-lg font-bold text-xs uppercase px-6 h-11 data-[state=active]:bg-white dark:data-[state=active]:bg-slate-800 data-[state=active]:shadow-sm transition-all">Geral</TabsTrigger>
@@ -383,7 +409,11 @@ export default function FinanceiroPage() {
                                     </div>
                                 ))
                             )}
-                            <Button variant="ghost" className="w-full text-xs font-black text-primary hover:bg-primary/5 uppercase tracking-widest h-12 rounded-xl mt-4">
+                            <Button
+                                variant="ghost"
+                                className="w-full text-xs font-black text-primary hover:bg-primary/5 uppercase tracking-widest h-12 rounded-xl mt-4"
+                                onClick={() => setSelectedTab('despesas')}
+                            >
                                 Detalhar Centros de Custos <ArrowRight className="w-3.5 h-3.5 ml-2" />
                             </Button>
                         </CardContent>

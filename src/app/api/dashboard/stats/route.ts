@@ -1,18 +1,28 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
     try {
         // Buscar estatísticas do dashboard
         const stats = await db.query(`
             SELECT
                 (SELECT COUNT(*) FROM "ServiceOrder" WHERE status IN ('IN_PROGRESS', 'WAITING_PARTS', 'APPROVED')) as "carsInShop",
-                (SELECT COALESCE(SUM(si.price * si.quantity) + SUM(pi.price * pi.quantity), 0)
-                 FROM "ServiceOrder" so
-                 LEFT JOIN "ServiceItem" si ON so.id = si."serviceOrderId"
-                 LEFT JOIN "PartItem" pi ON so.id = pi."serviceOrderId"
-                 WHERE EXTRACT(MONTH FROM so."createdAt") = EXTRACT(MONTH FROM CURRENT_DATE)
-                 AND EXTRACT(YEAR FROM so."createdAt") = EXTRACT(YEAR FROM CURRENT_DATE)
+                (
+                    COALESCE((
+                        SELECT SUM(si.price * si.quantity)
+                        FROM "ServiceItem" si
+                        JOIN "ServiceOrder" so ON so.id = si."serviceOrderId"
+                        WHERE so."createdAt" >= date_trunc('month', CURRENT_DATE)
+                          AND so."createdAt" < date_trunc('month', CURRENT_DATE) + interval '1 month'
+                    ), 0)
+                    +
+                    COALESCE((
+                        SELECT SUM(pi.price * pi.quantity)
+                        FROM "PartItem" pi
+                        JOIN "ServiceOrder" so ON so.id = pi."serviceOrderId"
+                        WHERE so."createdAt" >= date_trunc('month', CURRENT_DATE)
+                          AND so."createdAt" < date_trunc('month', CURRENT_DATE) + interval '1 month'
+                    ), 0)
                 ) as "monthlyRevenue",
                 (SELECT COUNT(*) FROM "ServiceOrder" WHERE status IN ('OPEN', 'QUOTATION', 'APPROVED') AND origin = 'SYSTEM') as "pendingOrders",
                 (SELECT COUNT(*) FROM "InventoryItem" WHERE quantity <= "minQuantity") as "stockAlerts",
@@ -32,9 +42,7 @@ export async function GET(request: NextRequest) {
                 v.model as "vehicleModel",
                 v.brand as "vehicleBrand",
                 so.mechanic,
-                (SELECT COUNT(*) FROM "PartItem" WHERE "serviceOrderId" = so.id AND "serviceOrderId" NOT IN (
-                    SELECT DISTINCT "serviceOrderId" FROM "PartItem" WHERE "serviceOrderId" = so.id
-                )) as "missingParts"
+                CASE WHEN so.status = 'WAITING_PARTS' THEN 1 ELSE 0 END as "missingParts"
             FROM "ServiceOrder" so
             JOIN "Client" c ON so."clientId" = c.id
             JOIN "Vehicle" v ON so."vehicleId" = v.id
@@ -55,13 +63,74 @@ export async function GET(request: NextRequest) {
                 so."entryDate",
                 c.name as "customerName",
                 v.model as "vehicleModel",
-                'Revisão' as "serviceType" -- Placeholder, idealmente viria dos itens
+                COALESCE((
+                    SELECT si.description
+                    FROM "ServiceItem" si
+                    WHERE si."serviceOrderId" = so.id
+                    ORDER BY si.id
+                    LIMIT 1
+                ), 'Serviço Geral') as "serviceType"
             FROM "ServiceOrder" so
             JOIN "Client" c ON so."clientId" = c.id
             JOIN "Vehicle" v ON so."vehicleId" = v.id
             WHERE so.status IN ('OPEN', 'QUOTATION')
             ORDER BY so."entryDate" ASC
             LIMIT 5
+        `);
+
+        // Série real de faturamento (últimos 6 meses)
+        const revenueByMonth = await db.query(`
+            WITH months AS (
+                SELECT date_trunc('month', CURRENT_DATE) - (interval '1 month' * gs) AS month_start
+                FROM generate_series(5, 0, -1) AS gs
+            ),
+            service_revenue AS (
+                SELECT date_trunc('month', so."createdAt") AS month_start, SUM(si.price * si.quantity) AS total
+                FROM "ServiceItem" si
+                JOIN "ServiceOrder" so ON so.id = si."serviceOrderId"
+                WHERE so."createdAt" >= date_trunc('month', CURRENT_DATE) - interval '5 months'
+                GROUP BY 1
+            ),
+            part_revenue AS (
+                SELECT date_trunc('month', so."createdAt") AS month_start, SUM(pi.price * pi.quantity) AS total
+                FROM "PartItem" pi
+                JOIN "ServiceOrder" so ON so.id = pi."serviceOrderId"
+                WHERE so."createdAt" >= date_trunc('month', CURRENT_DATE) - interval '5 months'
+                GROUP BY 1
+            )
+            SELECT
+                m.month_start::date AS month,
+                (COALESCE(sr.total, 0) + COALESCE(pr.total, 0))::float AS value
+            FROM months m
+            LEFT JOIN service_revenue sr ON sr.month_start = m.month_start
+            LEFT JOIN part_revenue pr ON pr.month_start = m.month_start
+            ORDER BY m.month_start ASC
+        `);
+
+        // Distribuição por tipo de serviço (mês atual, baseado na descrição do item)
+        const servicesDistribution = await db.query(`
+            SELECT
+                COALESCE(NULLIF(TRIM(SPLIT_PART(si.description, ' ', 1)), ''), 'Sem Serviço') AS name,
+                COUNT(*)::int AS value
+            FROM "ServiceItem" si
+            JOIN "ServiceOrder" so ON so.id = si."serviceOrderId"
+            WHERE so."createdAt" >= date_trunc('month', CURRENT_DATE)
+              AND so."createdAt" < date_trunc('month', CURRENT_DATE) + interval '1 month'
+            GROUP BY 1
+            ORDER BY 2 DESC
+            LIMIT 4
+        `);
+
+        // Status de orçamentos reais (mês atual)
+        const budgetStatus = await db.query(`
+            SELECT
+                SUM(CASE WHEN status = 'APPROVED' THEN 1 ELSE 0 END)::int AS approved,
+                SUM(CASE WHEN status IN ('OPEN', 'QUOTATION') THEN 1 ELSE 0 END)::int AS pending,
+                SUM(CASE WHEN status = 'CANCELLED' THEN 1 ELSE 0 END)::int AS rejected
+            FROM "ServiceOrder"
+            WHERE "createdAt" >= date_trunc('month', CURRENT_DATE)
+              AND "createdAt" < date_trunc('month', CURRENT_DATE) + interval '1 month'
+              AND origin = 'SYSTEM'
         `);
 
         return NextResponse.json({
@@ -71,7 +140,12 @@ export async function GET(request: NextRequest) {
                 waitingParts: waitingParts.rows[0].count
             },
             activeOrders: activeOrders.rows,
-            nextAppointments: nextAppointments.rows
+            nextAppointments: nextAppointments.rows,
+            charts: {
+                revenueByMonth: revenueByMonth.rows,
+                servicesDistribution: servicesDistribution.rows,
+                budgetStatus: budgetStatus.rows[0]
+            }
         });
 
     } catch (error) {

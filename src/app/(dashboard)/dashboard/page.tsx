@@ -6,7 +6,6 @@ import {
     TrendingUp,
     Clock,
     AlertTriangle,
-    CheckCircle2,
     FileBox,
     Upload,
     Calendar,
@@ -24,8 +23,6 @@ import ChecklistInteligente from '@/components/checklist/ChecklistInteligente';
 import { CreateOrderDialog } from '@/components/orders/CreateOrderDialog';
 import { toast } from 'sonner';
 import {
-    BarChart,
-    Bar,
     XAxis,
     YAxis,
     CartesianGrid,
@@ -35,13 +32,53 @@ import {
     PieChart,
     Pie,
     AreaChart,
-    Area,
-    Line,
-    LineChart
+    Area
 } from 'recharts';
+
+interface ActiveOrder {
+    id: string;
+    number: number;
+    status: string;
+    entryDate: string;
+    km: number;
+    customerName: string;
+    vehiclePlate: string;
+    vehicleModel: string;
+    vehicleBrand: string;
+    mechanic: string | null;
+    missingParts: number;
+}
+
+interface NextAppointment {
+    id: string;
+    entryDate: string;
+    customerName: string;
+    vehicleModel: string;
+    serviceType: string;
+}
+
+interface DashboardApiResponse {
+    success: boolean;
+    stats: {
+        carsInShop: number;
+        monthlyRevenue: number;
+        pendingOrders: number;
+        stockAlerts: number;
+        waitingParts: number;
+        legacyPending: number;
+    };
+    activeOrders: ActiveOrder[];
+    nextAppointments: NextAppointment[];
+    charts?: {
+        revenueByMonth?: Array<{ month: string; value: number }>;
+        servicesDistribution?: Array<{ name: string; value: number }>;
+        budgetStatus?: { approved: number; pending: number; rejected: number };
+    };
+}
 
 export default function DashboardPage() {
     const router = useRouter();
+    const xmlInputRef = React.useRef<HTMLInputElement>(null);
     const [view, setView] = React.useState<'dashboard' | 'checklist'>('dashboard');
     const [isCreateOrderOpen, setIsCreateOrderOpen] = React.useState(false);
     const [loading, setLoading] = React.useState(true);
@@ -53,41 +90,109 @@ export default function DashboardPage() {
         waitingParts: 0,
         legacyPending: 0
     });
-    const [activeOrders, setActiveOrders] = React.useState<any[]>([]);
-    const [nextAppointments, setNextAppointments] = React.useState<any[]>([]);
+    const [activeOrders, setActiveOrders] = React.useState<ActiveOrder[]>([]);
+    const [nextAppointments, setNextAppointments] = React.useState<NextAppointment[]>([]);
+    const [revenueData, setRevenueData] = React.useState<Array<{ name: string; value: number }>>([]);
+    const [servicesData, setServicesData] = React.useState<Array<{ name: string; value: number; color: string }>>([]);
+    const [budgetStatusData, setBudgetStatusData] = React.useState<Array<{ name: string; value: number; color: string }>>([]);
 
-    // Mock data for charts - to be replaced with real API data later
-    const revenueData = [
-        { name: 'Jan', value: 15000 },
-        { name: 'Fev', value: 18500 },
-        { name: 'Mar', value: 22000 },
-        { name: 'Abr', value: 21000 },
-        { name: 'Mai', value: 25000 },
-        { name: 'Jun', value: 28000 },
-    ];
+    const handleExportReport = () => {
+        const reportRows: string[] = [];
+        reportRows.push('secao,chave,valor');
+        reportRows.push(`resumo,carros_na_oficina,${stats.carsInShop}`);
+        reportRows.push(`resumo,faturamento_mensal,${Number(stats.monthlyRevenue || 0)}`);
+        reportRows.push(`resumo,novas_solicitacoes,${stats.pendingOrders}`);
+        reportRows.push(`resumo,alertas_estoque,${stats.stockAlerts}`);
+        reportRows.push(`resumo,veiculos_aguardando_pecas,${stats.waitingParts}`);
+        reportRows.push(`resumo,pendencias_legado,${Number(stats.legacyPending || 0)}`);
 
-    const servicesData = [
-        { name: 'Revisão', value: 35, color: '#10b981' },
-        { name: 'Mecânica', value: 45, color: '#3b82f6' },
-        { name: 'Elétrica', value: 15, color: '#f59e0b' },
-        { name: 'Outros', value: 5, color: '#64748b' },
-    ];
+        activeOrders.forEach((order) => {
+            reportRows.push(`ordem_ativa,os,${order.number ?? ''}`);
+            reportRows.push(`ordem_ativa,status,${order.status ?? ''}`);
+            reportRows.push(`ordem_ativa,cliente,"${(order.customerName ?? '').replace(/"/g, '""')}"`);
+            reportRows.push(`ordem_ativa,veiculo,"${`${order.vehicleBrand ?? ''} ${order.vehicleModel ?? ''}`.trim().replace(/"/g, '""')}"`);
+            reportRows.push(`ordem_ativa,placa,${order.vehiclePlate ?? ''}`);
+        });
 
-    const budgetStatusData = [
-        { name: 'Aprovados', value: 8, color: '#10b981' },
-        { name: 'Pendentes', value: 5, color: '#f59e0b' },
-        { name: 'Rejeitados', value: 2, color: '#ef4444' },
-    ];
+        nextAppointments.forEach((appt) => {
+            reportRows.push(`agendamento,data,${appt.entryDate ?? ''}`);
+            reportRows.push(`agendamento,cliente,"${(appt.customerName ?? '').replace(/"/g, '""')}"`);
+            reportRows.push(`agendamento,veiculo,"${(appt.vehicleModel ?? '').replace(/"/g, '""')}"`);
+            reportRows.push(`agendamento,servico,"${(appt.serviceType ?? '').replace(/"/g, '""')}"`);
+        });
+
+        const csv = reportRows.join('\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `dashboard-relatorio-${new Date().toISOString().slice(0, 10)}.csv`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        toast.success('Relatório exportado');
+    };
+
+    const handleXmlImport = async (file: File) => {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        toast.promise(async () => {
+            const response = await fetch('/api/parts/import', {
+                method: 'POST',
+                body: formData,
+            });
+
+            const result = await response.json();
+            if (!response.ok || !result.success) {
+                throw new Error(result.error || 'Falha ao processar XML');
+            }
+
+            return result;
+        }, {
+            loading: 'Processando XML...',
+            success: (result) => {
+                fetchData();
+                return result.message || 'XML processado com sucesso';
+            },
+            error: (err) => err.message || 'Erro no processamento do XML',
+        });
+    };
 
     const fetchData = async () => {
         setLoading(true);
         try {
             const response = await fetch('/api/dashboard/stats');
-            const data = await response.json();
+            const data: DashboardApiResponse = await response.json();
             if (data.success) {
                 setStats(data.stats);
                 setActiveOrders(data.activeOrders);
                 setNextAppointments(data.nextAppointments || []);
+
+                const monthFormatter = new Intl.DateTimeFormat('pt-BR', { month: 'short' });
+                const revenueSeries = (data.charts?.revenueByMonth || []).map((item) => ({
+                    name: monthFormatter.format(new Date(item.month)).replace('.', ''),
+                    value: Number(item.value || 0),
+                }));
+
+                const servicePalette = ['#10b981', '#3b82f6', '#f59e0b', '#64748b', '#ef4444', '#8b5cf6'];
+                const serviceSeries = (data.charts?.servicesDistribution || []).map((item, index: number) => ({
+                    name: item.name,
+                    value: Number(item.value || 0),
+                    color: servicePalette[index % servicePalette.length],
+                }));
+
+                const budget = data.charts?.budgetStatus || { approved: 0, pending: 0, rejected: 0 };
+                const budgetSeries = [
+                    { name: 'Aprovados', value: Number(budget.approved || 0), color: '#10b981' },
+                    { name: 'Pendentes', value: Number(budget.pending || 0), color: '#f59e0b' },
+                    { name: 'Rejeitados', value: Number(budget.rejected || 0), color: '#ef4444' },
+                ];
+
+                setRevenueData(revenueSeries);
+                setServicesData(serviceSeries);
+                setBudgetStatusData(budgetSeries);
             }
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
@@ -121,7 +226,7 @@ export default function DashboardPage() {
                     <p className="text-muted-foreground mt-2 font-medium">Bem-vindo, Gabriel. Visão geral da sua oficina hoje.</p>
                 </div>
                 <div className="flex gap-3">
-                    <Button variant="outline" className="h-12 px-6 rounded-xl border-slate-200 dark:border-slate-800 font-bold gap-2" onClick={() => toast.info("Funcionalidade em desenvolvimento")}>
+                    <Button variant="outline" className="h-12 px-6 rounded-xl border-slate-200 dark:border-slate-800 font-bold gap-2" onClick={handleExportReport}>
                         <Calendar className="w-4 h-4" /> Relatórios
                     </Button>
                     <Button className="h-12 px-6 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold shadow-xl shadow-slate-900/10 gap-2" onClick={() => setIsCreateOrderOpen(true)}>
@@ -533,6 +638,18 @@ export default function DashboardPage() {
 
                 {/* Import XML */}
                 <Card className="lg:col-span-2 border-none shadow-xl bg-slate-900 text-white overflow-hidden relative group">
+                    <input
+                        ref={xmlInputRef}
+                        type="file"
+                        accept=".xml"
+                        className="hidden"
+                        onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            await handleXmlImport(file);
+                            e.currentTarget.value = '';
+                        }}
+                    />
                     <div className="absolute top-0 right-0 opacity-10 transform translate-x-10 -translate-y-10 group-hover:scale-110 transition-transform duration-700">
                         <FileBox size={180} />
                     </div>
@@ -541,7 +658,7 @@ export default function DashboardPage() {
                         <CardDescription className="text-slate-400 font-medium">Importe notas fiscais de peças automaticamente</CardDescription>
                     </CardHeader>
                     <CardContent className="p-8 pt-0 relative z-10">
-                        <div className="border-2 border-dashed border-slate-700/50 hover:border-slate-600 bg-slate-950/30 rounded-2xl p-8 flex flex-col items-center text-center space-y-4 transition-colors cursor-pointer" onClick={() => toast.success("Processando XML...")}>
+                        <div className="border-2 border-dashed border-slate-700/50 hover:border-slate-600 bg-slate-950/30 rounded-2xl p-8 flex flex-col items-center text-center space-y-4 transition-colors cursor-pointer" onClick={() => xmlInputRef.current?.click()}>
                             <div className="p-4 bg-primary/10 rounded-full text-primary ring-8 ring-primary/5">
                                 <Upload className="w-8 h-8" />
                             </div>
