@@ -50,7 +50,13 @@ export function ImportCSVDialog({ onSuccess }: ImportCSVDialogProps) {
 
             if (data.success) {
                 setResult(data);
-                toast.success(`${data.total} clientes processados com sucesso!`);
+                if (data.failed > 0 && data.imported === 0 && data.updated === 0) {
+                    toast.error('A importação terminou, mas nenhuma linha foi gravada.');
+                } else if (data.failed > 0 || data.skipped > 0) {
+                    toast.warning(`${data.total} linhas processadas com avisos.`);
+                } else {
+                    toast.success(`${data.total} clientes processados com sucesso!`);
+                }
                 onSuccess?.();
             } else {
                 toast.error(data.error || 'Erro ao importar clientes');
@@ -175,6 +181,8 @@ export function ImportCSVDialog({ onSuccess }: ImportCSVDialogProps) {
                                         <div className="text-sm text-green-700 dark:text-green-300 space-y-1">
                                             <div>✓ {result.imported} novos clientes importados</div>
                                             <div>✓ {result.updated} clientes atualizados</div>
+                                            <div>✓ {result.skipped ?? 0} linhas ignoradas</div>
+                                            <div>✓ {result.failed ?? 0} linhas com falha</div>
                                             <div>✓ Total: {result.total} registros processados</div>
                                         </div>
                                         {result.errors && result.errors.length > 0 && (

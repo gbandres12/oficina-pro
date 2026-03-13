@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -23,7 +23,6 @@ import {
     Building2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { motion, AnimatePresence } from 'framer-motion';
 import { signOut, useSession } from 'next-auth/react';
 import { CreateOrderDialog } from '@/components/orders/CreateOrderDialog';
@@ -35,6 +34,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [isCreateOrderOpen, setIsCreateOrderOpen] = useState(false);
     const pathname = usePathname();
+    const searchInputRef = useRef<HTMLInputElement>(null);
 
     const menuItems = [
         { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
@@ -50,9 +50,42 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         { icon: Settings, label: 'Configurações', href: '/configuracoes' },
     ];
 
+    useEffect(() => {
+        const handleShortcut = (event: KeyboardEvent) => {
+            if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
+                event.preventDefault();
+                searchInputRef.current?.focus();
+            }
+        };
+
+        window.addEventListener("keydown", handleShortcut);
+        return () => window.removeEventListener("keydown", handleShortcut);
+    }, []);
+
+    useEffect(() => {
+        const isDesktop = window.matchMedia("(min-width: 1024px)").matches;
+        if (!isDesktop) {
+            setIsSidebarOpen(false);
+        }
+    }, [pathname]);
+
     return (
         <div className="flex h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-hidden font-sans">
             {/* Sidebar */}
+            <AnimatePresence>
+                {isSidebarOpen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="fixed inset-0 bg-slate-950/40 backdrop-blur-[1px] z-40 lg:hidden"
+                        onClick={() => setIsSidebarOpen(false)}
+                        aria-hidden="true"
+                    />
+                )}
+            </AnimatePresence>
+
             <AnimatePresence mode="wait">
                 {isSidebarOpen && (
                     <motion.aside
@@ -137,15 +170,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 {/* Header */}
                 <header className="h-20 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-100 dark:border-slate-800 flex items-center justify-between px-8 sticky top-0 z-40">
                     <div className="flex items-center gap-6">
-                        <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="text-slate-400 hover:text-slate-900 dark:hover:text-white">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                            className="text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                            aria-label={isSidebarOpen ? "Fechar menu lateral" : "Abrir menu lateral"}
+                        >
                             {isSidebarOpen ? <ChevronLeft className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
                         </Button>
 
                         <div className="hidden md:flex items-center relative group">
                             <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 group-focus-within:text-primary transition-colors" />
-                            <input
-                                placeholder="Busca global (CRTL + K)"
-                                className="bg-slate-100 dark:bg-slate-800 border-none focus:ring-2 focus:ring-primary/20 text-sm w-64 lg:w-96 h-11 rounded-xl pl-11 pr-4 outline-none font-medium text-slate-900 dark:text-white placeholder:text-slate-500 transition-all"
+                            <Input
+                                ref={searchInputRef}
+                                placeholder="Busca global (CTRL/CMD + K)"
+                                className="bg-slate-100 dark:bg-slate-800 border-none focus-visible:ring-2 focus-visible:ring-primary/20 text-sm w-64 lg:w-96 h-11 rounded-xl pl-11 pr-4 outline-none font-medium text-slate-900 dark:text-white placeholder:text-slate-500 transition-all"
+                                aria-label="Busca global"
                             />
                         </div>
                     </div>
@@ -162,7 +203,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
                         <ThemeToggle />
 
-                        <Button variant="ghost" size="icon" className="relative text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-xl w-11 h-11">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="relative text-slate-400 hover:text-slate-900 dark:hover:text-white rounded-xl w-11 h-11"
+                            aria-label="Notificações"
+                        >
                             <Bell className="w-5 h-5" />
                             <span className="absolute top-3 right-3 w-2 h-2 bg-red-500 rounded-full border-2 border-white dark:border-slate-900" />
                         </Button>

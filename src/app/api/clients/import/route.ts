@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import Papa from 'papaparse';
+import { randomUUID } from 'crypto';
 
 export async function POST(request: NextRequest) {
     let client;
@@ -37,11 +38,11 @@ export async function POST(request: NextRequest) {
         }
 
         client = await db.getClient();
-        await client.query('BEGIN');
 
         let imported = 0;
         let updated = 0;
         let skipped = 0;
+        let failed = 0;
         let errors: string[] = [];
 
         for (const row of result.data) {
@@ -113,9 +114,19 @@ export async function POST(request: NextRequest) {
                     updated++;
                 } else {
                     await client.query(`
-                        INSERT INTO "Client" (name, email, phone, document, address)
-                        VALUES ($1, $2, $3, $4, $5)
+                        INSERT INTO "Client" (
+                            id,
+                            name,
+                            email,
+                            phone,
+                            document,
+                            address,
+                            "createdAt",
+                            "updatedAt"
+                        )
+                        VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                     `, [
+                        randomUUID(),
                         normalizedName,
                         normalizedEmail,
                         normalizedPhone,
@@ -126,24 +137,25 @@ export async function POST(request: NextRequest) {
                 }
             } catch (error) {
                 console.error('Erro na linha:', row, error);
+                failed++;
                 errors.push(`Erro ao processar "${row.nome || 'desconhecido'}": ${error instanceof Error ? error.message : 'Erro no banco'}`);
             }
         }
 
-        await client.query('COMMIT');
+        const totalProcessed = imported + updated + skipped + failed;
 
         return NextResponse.json({
             success: true,
             imported,
             updated,
             skipped,
-            total: imported + updated,
+            failed,
+            total: totalProcessed,
             errors: errors.length > 0 ? errors : undefined,
-            message: `✅ Importação concluída: ${imported} novos, ${updated} atualizados.${skipped > 0 ? ` ${skipped} ignorados.` : ''}`
+            message: `Importação concluída: ${imported} novos, ${updated} atualizados, ${skipped} ignorados e ${failed} com falha.`
         });
 
     } catch (error) {
-        if (client) await client.query('ROLLBACK');
         console.error('Erro crítico na importação:', error);
         return NextResponse.json(
             { error: 'Falha no processamento do CSV', details: error instanceof Error ? error.message : 'Erro interno' },

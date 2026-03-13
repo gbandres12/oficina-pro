@@ -48,6 +48,9 @@
 }
 
 :root {
+  --font-geist-sans: "Inter", "Segoe UI", Arial, Helvetica, sans-serif;
+  --font-geist-mono: "SFMono-Regular", "Consolas", "Liberation Mono", monospace;
+  --font-montserrat: "Montserrat", "Avenir Next", "Segoe UI", Arial, Helvetica, sans-serif;
   --radius: 0.75rem;
   --background: oklch(0.985 0.002 247.858); /* Soft off-white with hint of blue */
   --foreground: oklch(0.205 0.02 247.858);
@@ -123,5 +126,11 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .font-montserrat {
+    font-family: var(--font-montserrat);
   }
 }
