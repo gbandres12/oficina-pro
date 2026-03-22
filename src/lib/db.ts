@@ -2,6 +2,20 @@ import { Pool } from 'pg';
 
 let pool: Pool | null = null;
 
+type DbError = {
+    message?: string;
+    code?: string;
+};
+
+function sanitizeConnectionString(connectionString: string) {
+    try {
+        const url = new URL(connectionString);
+        return `${url.protocol}//${url.hostname}:${url.port || '5432'}/${url.pathname.replace('/', '')}`;
+    } catch {
+        return 'invalid-connection-string';
+    }
+}
+
 function getPool() {
     if (pool) return pool;
 
@@ -12,7 +26,7 @@ function getPool() {
         throw new Error("DATABASE_URL_MISSING");
     }
 
-    console.log("Initializing Postgres Pool with URL:", connectionString.substring(0, 15) + "...");
+    console.log('Initializing Postgres Pool:', sanitizeConnectionString(connectionString));
 
     pool = new Pool({
         connectionString,
@@ -31,33 +45,34 @@ function getPool() {
 }
 
 export const db = {
-    async query(text: string, params?: any[]) {
+    async query<T = unknown>(text: string, params?: readonly unknown[]) {
         try {
             const start = Date.now();
             const client = getPool();
-            const res = await client.query(text, params);
+            const res = await client.query<T>(text, params);
             const duration = Date.now() - start;
 
             if (process.env.NODE_ENV !== 'production') {
                 console.log('Query executed', { duration, rows: res.rowCount });
             }
             return res;
-        } catch (error: any) {
+        } catch (error: unknown) {
+            const dbError = error as DbError;
             console.error('Database query error:', {
-                message: error.message,
-                code: error.code,
+                message: dbError.message,
+                code: dbError.code,
                 text: text.substring(0, 50) + '...'
             });
             throw error;
         }
     },
-    async fetchOne(text: string, params?: any[]) {
+    async fetchOne<T = unknown>(text: string, params?: readonly unknown[]) {
         const res = await this.query(text, params);
-        return res.rows[0];
+        return res.rows[0] as T | undefined;
     },
-    async fetchAll(text: string, params?: any[]) {
+    async fetchAll<T = unknown>(text: string, params?: readonly unknown[]) {
         const res = await this.query(text, params);
-        return res.rows;
+        return res.rows as T[];
     },
     async getClient() {
         const pool = getPool();
